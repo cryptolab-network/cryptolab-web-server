@@ -1,14 +1,17 @@
 use warp::Filter;
+use super::db::Database;
 mod kusama;
 
 pub struct WebServer {
     port: u16,
+    db: Database,
 }
 
 impl WebServer {
-    pub fn new(port: u16) -> Self {
+    pub fn new(port: u16, db: Database) -> Self {
         WebServer {
-            port: port
+            port: port,
+            db: db
         }
     }
 
@@ -17,7 +20,7 @@ impl WebServer {
         let routes = warp::get().and(
             hello_world
         );
-        let routes = routes.or(kusama::routes());
+        let routes = routes.or(kusama::routes(self.db.clone())).with(warp::compression::gzip());
         routes
     }
 

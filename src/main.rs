@@ -11,9 +11,9 @@ use db::Database;
 async fn main() {
     println!("Hello, world!");
 
-    let db = Database::new(Ipv4Addr::new(127, 0, 0, 1), 27017, "kusama");
+    let mut db = Database::new(Ipv4Addr::new(127, 0, 0, 1), 27017, "kusama");
     db.connect().await;
 
-    let server = WebServer::new(3030);
+    let server = WebServer::new(3030, db);
     server.start().await;
 }

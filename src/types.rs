@@ -25,7 +25,7 @@ pub struct ValidatorInfo {
     nominators: Vec<Nominator>,
     staking_ledger: StakingLedger,
     validator_prefs: ValidatorPrefs,
-    identity: Identity
+    identity: Identity,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -79,6 +79,35 @@ pub struct Identity {
     display: Option<String>
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatorNominationInfo {
+    id: String,
+    status_change: StatusChange,
+    identity: Identity,
+    info: NominationInfo,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct StatusChange {
+    commission: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NominationInfo {
+    nominators: Vec<Nominator>,
+    era: u32,
+    exposure: Exposure,
+    commission: f32,
+    apy: f32,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ChainInfo {
+    pub active_era: u32,
+}
+
 fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
     where T: FromStr,
           T::Err: Display,
@@ -95,7 +124,10 @@ where
 {
     Ok(match Value::deserialize(deserializer)? {
         Value::String(s) => {
-            let result = u128::from_str_radix(&s[2..], 16);
+            let mut result = Ok(0);
+            if s.len() > 3 {
+                result = u128::from_str_radix(&s[2..], 16);
+            }
             result.map_err(de::Error::custom)?
         },
         Value::Number(num) => {
