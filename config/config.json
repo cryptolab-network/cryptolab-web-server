@@ -1,0 +1,11 @@
+{
+    "db_address": "127.0.0.1",
+    "db_port": 27017,
+    "kusama_db_name": "kusama",
+    "polkadot_db_name": "polkadot",
+
+    "port": 3030,
+    "cors_url": "http://127.0.0.1:8080",
+
+    "cache_file_path" : "E:/git/validator/src/data/data.json"
+}

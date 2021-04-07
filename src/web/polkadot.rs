@@ -2,6 +2,7 @@ use std::{collections::HashMap, convert::Infallible};
 use warp::Filter;
 use warp::http::{StatusCode};
 use serde::Deserialize;
+
 use super::super::cache;
 use super::super::db::Database;
 
@@ -66,7 +67,7 @@ async fn handle_query_parameter_err() -> Result<warp::reply::WithStatus<warp::re
 }
 
 pub fn routes(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
-    let routes = warp::get().and(warp::path("api")).and(warp::path("dot"))
+    let routes = warp::get().and(warp::path("api")).and(warp::path("polkadot"))
     .and(get_validators()
     .or(get_validator_detail())
     .or(get_validator_trend(db.clone()))

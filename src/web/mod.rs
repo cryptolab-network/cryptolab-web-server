@@ -2,6 +2,7 @@ use warp::Filter;
 use super::db::Database;
 mod kusama;
 mod polkadot;
+use super::config::Config;
 
 pub struct WebServerOptions {
     pub kusama_db: Database,
@@ -32,7 +33,7 @@ impl WebServer {
 
     pub async fn start(&self) {
         let cors = warp::cors()
-        .allow_origin("http://127.0.0.1:8080")
+        .allow_origin(Config::current().cors_url.as_str())
         .allow_headers(vec!["User-Agent", "Sec-Fetch-Mode", "Referer", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers", "Content-Type"])
         .allow_methods(&[warp::http::Method::GET, warp::http::Method::OPTIONS]);
 
