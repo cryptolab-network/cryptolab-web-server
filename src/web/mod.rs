@@ -1,22 +1,32 @@
 use warp::Filter;
 use super::db::Database;
 mod kusama;
+mod polkadot;
+
+pub struct WebServerOptions {
+    pub kusama_db: Database,
+    pub polkadot_db: Database,
+}
 
 pub struct WebServer {
     port: u16,
-    db: Database,
+    kusama_db: Database,
+    polkadot_db: Database,
 }
 
 impl WebServer {
-    pub fn new(port: u16, db: Database) -> Self {
+    pub fn new(port: u16, options: WebServerOptions) -> Self {
         WebServer {
             port: port,
-            db: db
+            kusama_db: options.kusama_db,
+            polkadot_db: options.polkadot_db,
         }
     }
 
     fn initialize_routes(&self) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        let routes = kusama::routes(self.db.clone());
+        let routes = 
+        kusama::routes(self.kusama_db.clone())
+        .or(polkadot::routes(self.polkadot_db.clone()));
         routes
     }
 

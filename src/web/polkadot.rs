@@ -11,13 +11,13 @@ struct ValidDetailOptions {
 }
 
 fn get_validators() -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
-    let path = warp::path("api").and(warp::path("validators")).and(warp::path::end())
+    let path = warp::path("validators").and(warp::path::end())
         .map(|| warp::reply::json(&cache::get_validators()));
     path
 }
 
 fn get_validator_trend(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
-    warp::path("api").and(warp::path("validator")).and(with_db(db))
+    warp::path("validator").and(with_db(db))
     .and(warp::path::param()).and(warp::path("trend")).and(warp::path::end())
     .and_then(|db: Database, stash: String| async move {
         let validator = db.get_validator(stash).await;
@@ -29,7 +29,7 @@ fn get_validator_trend(db: Database) -> impl Filter<Extract=impl warp::Reply, Er
 }
 
 fn get_1kv_validators() -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
-    let path = warp::path("api").and(warp::path("valid")).and(warp::path::end())
+    let path = warp::path("valid").and(warp::path::end())
         .map(|| warp::reply::json(&cache::get_1kv_info_detail()));
     path
 }
@@ -44,7 +44,7 @@ async fn get_data_from_db(db: Database, era: u32) -> Result<warp::reply::WithSta
 }
 
 fn get_validator_detail() -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
-    let path = warp::path("api").and(warp::path("validDetail"))
+    let path = warp::path("validDetail")
         .and(warp::path::end())
         .and(warp::query().map(|opt: ValidDetailOptions| 
             if opt.option == "1kv" {
@@ -66,16 +66,13 @@ async fn handle_query_parameter_err() -> Result<warp::reply::WithStatus<warp::re
 }
 
 pub fn routes(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
-    let hello_world = warp::path::end().map(|| "Hello, World at root Kusama!");
-    let routes = warp::get().and(
-        hello_world
-    );
-    let routes = routes.or(get_validators())
+    let routes = warp::get().and(warp::path("api")).and(warp::path("dot"))
+    .and(get_validators()
     .or(get_validator_detail())
     .or(get_validator_trend(db.clone()))
     .or(get_1kv_validators())
     .or(
-        warp::path("api").and(warp::path("allValidators")).and(warp::path::end())
+        warp::path("allValidators").and(warp::path::end())
         .and(with_db(db.clone()))
         .and(warp::query::<HashMap<String, String>>())
         .and_then(|db: Database,p: HashMap<String, String>| async move { match p.get("size") {
@@ -87,6 +84,6 @@ pub fn routes(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp:
                 handle_query_parameter_err().await
             }
         }})
-    );
+    ));
     routes
 }

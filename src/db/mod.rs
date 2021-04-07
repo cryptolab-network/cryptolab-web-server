@@ -12,11 +12,13 @@ use super::types;
 // Now we will be able to write our own errors, defer to an underlying error
 // implementation, or do something in between.
 #[derive(Debug, Clone)]
-pub struct DatabaseError;
+pub struct DatabaseError {
+    message: String,
+}
 
 impl fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Database error")
+        write!(f, "Database error: {}", self.message)
     }
 }
 
@@ -50,16 +52,8 @@ impl Database {
         Ok(())
     }
 
-    // {$match: {
-    //     'id': id
-    //   }},
-    //   {$lookup: {
-    //     from: 'nomination',
-    //     localField: 'id',
-    //     foreignField: 'validator',
-    //     as: 'info'
-    //   }}
     pub async fn get_validator(&self, stash: String) -> Result<types::ValidatorNominationTrend, DatabaseError> {
+        let cloned_stash = stash.clone();
         let match_command = doc! {
             "$match":{
                 "id": stash
@@ -74,7 +68,7 @@ impl Database {
             },
         };
         // let mut array = Vec::new();
-        match self.client.as_ref().ok_or(DatabaseError) {
+        match self.client.as_ref().ok_or(DatabaseError {message: "Mongodb client is not working as expected.".to_string()}) {
             Ok(client) => {
                 let db = client.database(&self.db_name);
                 let mut cursor = db.collection("validator")
@@ -84,7 +78,9 @@ impl Database {
                     let info: types::ValidatorNominationTrend = bson::from_bson(Bson::Document(unwrapped)).unwrap();
                     return Ok(info)
                 }
-                Err(DatabaseError)
+                Err(DatabaseError {
+                    message: format!("Failed to find validator with stash {}", cloned_stash),
+                })
             }
             Err(e) => {
                 println!("{}", e);
@@ -114,7 +110,7 @@ impl Database {
         let limit_command = doc! {
             "$limit": size,
         };
-        match self.client.as_ref().ok_or(DatabaseError) {
+        match self.client.as_ref().ok_or(DatabaseError {message: "Mongodb client is not working as expected.".to_string()}) {
             Ok(client) => {
                 let db = client.database(&self.db_name);
                 let mut cursor = db.collection("nomination")
@@ -159,7 +155,7 @@ impl Database {
     }
 
     pub async fn get_chain_info(&self) -> Result<types::ChainInfo, DatabaseError> {
-        match self.client.as_ref().ok_or(DatabaseError) {
+        match self.client.as_ref().ok_or(DatabaseError {message: "Mongodb client is not working as expected.".to_string()}) {
             Ok(client) => {
                 let db = client.database(&self.db_name);
                 let cursor = db.collection("chainInfo")
