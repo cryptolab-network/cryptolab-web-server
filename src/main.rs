@@ -21,12 +21,12 @@ async fn main() {
     let config = read_config("./config/config.json".to_string()).unwrap();
     config.make_current();
 
-    let mut kusama_db = Database::new(Ipv4Addr::new(127, 0, 0, 1),
+    let mut kusama_db = Database::new(Config::current().db_address.parse().unwrap(),
         Config::current().db_port, Config::current().kusama_db_name.as_str());
     let result = kusama_db.connect().await;
     match result {
         Ok(r) => {
-            let mut polkadot_db = Database::new(Ipv4Addr::new(127, 0, 0, 1),
+            let mut polkadot_db = Database::new(Config::current().db_address.parse().unwrap(),
                 Config::current().db_port, Config::current().polkadot_db_name.as_str());
             polkadot_db.connect().await;
             let options = WebServerOptions {
