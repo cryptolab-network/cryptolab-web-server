@@ -10,6 +10,8 @@ pub struct PolkadotApiValidators {
     pub valid_detail_all: Option<ValidatorDetailAll>,
     #[serde(rename = "validDetail")]
     pub valid_detail_1kv: Option<ValidatorDetail1kv>,
+    #[serde(rename = "valid")]
+    pub valid: Option<Validator1kvSimple>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -20,6 +22,16 @@ pub struct ValidatorDetail1kv {
     pub elected_count: Option<u32>,
     pub election_rate: Option<f32>,
     pub valid: Vec<ValidatorInfo1kv>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Validator1kvSimple {
+    pub active_era: Option<u32>,
+    pub validator_count: Option<u32>,
+    pub elected_count: Option<u32>,
+    pub election_rate: Option<f32>,
+    pub valid: Vec<ValidatorInfo1kvSimple>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -39,7 +51,18 @@ pub struct ValidatorInfo1kv {
     elected: bool,
     active_nominators: u32,
     total_nominators: u32,
-    staking_info: StakingInfo,
+    staking_info: Option<StakingInfo>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatorInfo1kvSimple {
+    aggregate: Aggregate,
+    rank: u32,
+    inclusion: f32,
+    name: String,
+    stash: String,
+    elected: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
