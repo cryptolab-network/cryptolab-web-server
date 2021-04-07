@@ -50,16 +50,51 @@ impl Database {
         Ok(())
     }
 
+    // {$match: {
+    //     'id': id
+    //   }},
+    //   {$lookup: {
+    //     from: 'nomination',
+    //     localField: 'id',
+    //     foreignField: 'validator',
+    //     as: 'info'
+    //   }}
+    pub async fn get_validator(&self, stash: String) -> Result<types::ValidatorNominationTrend, DatabaseError> {
+        let match_command = doc! {
+            "$match":{
+                "id": stash
+            },
+        };
+        let lookup_command = doc! {
+            "$lookup": {
+                "from": "nomination",
+                "localField": "id",
+                "foreignField": "validator",
+                "as": "info"
+            },
+        };
+        // let mut array = Vec::new();
+        match self.client.as_ref().ok_or(DatabaseError) {
+            Ok(client) => {
+                let db = client.database(&self.db_name);
+                let mut cursor = db.collection("validator")
+                    .aggregate(vec![match_command, lookup_command], None).await.unwrap();
+                while let Some(result) = cursor.next().await {
+                    let unwrapped = result.unwrap();
+                    let info: types::ValidatorNominationTrend = bson::from_bson(Bson::Document(unwrapped)).unwrap();
+                    return Ok(info)
+                }
+                Err(DatabaseError)
+            }
+            Err(e) => {
+                println!("{}", e);
+                Err(e)
+            }
+        }
+    }
+
     pub async fn get_all_validator_info_of_era(&self, era: u32, page: u32, size: u32) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
         let mut array = Vec::new();
-        // {$lookup: {
-        //     from: 'validator',
-        //     localField: 'validator',
-        //     foreignField: 'id',
-        //     as: 'data'
-        // }},
-        // {$skip: page * size},
-        // {$limit: size}
         let match_command = doc! {
             "$match":{
                 "era": era

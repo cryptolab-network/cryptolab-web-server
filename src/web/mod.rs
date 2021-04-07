@@ -16,16 +16,17 @@ impl WebServer {
     }
 
     fn initialize_routes(&self) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        let hello_world = warp::path::end().map(|| "Hello, World at root!");
-        let routes = warp::get().and(
-            hello_world
-        );
-        let routes = routes.or(kusama::routes(self.db.clone())).with(warp::compression::gzip());
+        let routes = kusama::routes(self.db.clone());
         routes
     }
 
     pub async fn start(&self) {
-        let routes = self.initialize_routes();
+        let cors = warp::cors()
+        .allow_origin("http://127.0.0.1:8080")
+        .allow_headers(vec!["User-Agent", "Sec-Fetch-Mode", "Referer", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers", "Content-Type"])
+        .allow_methods(&[warp::http::Method::GET, warp::http::Method::OPTIONS]);
+
+        let routes = self.initialize_routes().with(cors).with(warp::compression::gzip()).with(warp::log("warp_request"));
         warp::serve(routes)
         .run(([127, 0, 0, 1], self.port))
         .await;

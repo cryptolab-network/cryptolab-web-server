@@ -7,13 +7,64 @@ use serde::de;
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct PolkadotApiValidators {
-    pub valid_detail_all: ValidatorDetailAll,
+    pub valid_detail_all: Option<ValidatorDetailAll>,
+    #[serde(rename = "validDetail")]
+    pub valid_detail_1kv: Option<ValidatorDetail1kv>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatorDetail1kv {
+    pub active_era: Option<u32>,
+    pub validator_count: Option<u32>,
+    pub elected_count: Option<u32>,
+    pub election_rate: Option<f32>,
+    pub valid: Vec<ValidatorInfo1kv>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ValidatorDetailAll {
     pub valid: Vec<ValidatorInfo>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatorInfo1kv {
+    aggregate: Aggregate,
+    rank: u32,
+    inclusion: f32,
+    name: String,
+    stash: String,
+    elected: bool,
+    active_nominators: u32,
+    total_nominators: u32,
+    staking_info: StakingInfo,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct StakingInfo {
+    account_id: String,
+    exposure: Exposure,
+    nominators: Vec<Nominator>,
+    staking_ledger: StakingLedger,
+    stash_id: String,
+    validator_prefs: ValidatorPrefs,
+    identity: Identity,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct Aggregate {
+    total: f32,
+    aggregate: f32,
+    inclusion: f32,
+    discovered: f32,
+    nominated: f32,
+    rank: f32,
+    unclaimed: f32,
+    randomness: f32,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -86,6 +137,15 @@ pub struct ValidatorNominationInfo {
     status_change: StatusChange,
     identity: Identity,
     info: NominationInfo,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatorNominationTrend {
+    id: String,
+    status_change: StatusChange,
+    identity: Identity,
+    info: Vec<NominationInfo>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
