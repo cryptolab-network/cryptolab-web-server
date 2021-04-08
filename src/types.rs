@@ -13,6 +13,8 @@ pub struct PolkadotApiValidators {
     #[serde(rename = "valid")]
     pub valid: Option<Validator1kvSimple>,
     pub nominators: Option<Vec<NominatorNomination>>,
+    #[serde(rename = "onekvNominators")]
+    pub one_kv_nominators: Option<OneKvNominators>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -198,6 +200,28 @@ pub struct NominationInfo {
 #[serde(rename_all = "camelCase")]
 pub struct ChainInfo {
     pub active_era: u32,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OneKvNominators {
+    pub active_era: u32,
+    pub nominators: Vec<OneKvNominator>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OneKvNominator {
+    current: Vec<OneKvNominated>,
+    last_nomination: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OneKvNominated {
+    stash: String,
+    name: String,
+    elected: bool,
 }
 
 fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
