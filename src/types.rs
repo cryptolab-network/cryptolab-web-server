@@ -12,6 +12,7 @@ pub struct PolkadotApiValidators {
     pub valid_detail_1kv: Option<ValidatorDetail1kv>,
     #[serde(rename = "valid")]
     pub valid: Option<Validator1kvSimple>,
+    pub nominators: Option<Vec<NominatorNomination>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -122,6 +123,14 @@ pub struct Others {
 pub struct Nominator {
     address: String,
     balance: Balance
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct NominatorNomination {
+    account_id: String,
+    balance: Balance,
+    targets: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

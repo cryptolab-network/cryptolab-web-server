@@ -7,5 +7,5 @@
     "port": 3030,
     "cors_url": "http://127.0.0.1:8080",
 
-    "cache_file_path" : "E:/git/validator/src/data/data.json"
+    "cache_file_path": "E:/git/validator/src/data/data.json"
 }

@@ -61,6 +61,12 @@ fn get_validator_detail() -> impl Filter<Extract=impl warp::Reply, Error=warp::R
     path
 }
 
+fn get_nominators() -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
+    let path = warp::path("api").and(warp::path("nominators"))
+        .and(warp::path::end()).map(|| warp::reply::json(&cache::get_nominators()));
+    path
+}
+
 async fn handle_query_parameter_err() -> Result<warp::reply::WithStatus<warp::reply::Json>, Infallible> {
     Ok(warp::reply::with_status(warp::reply::json(&""), StatusCode::BAD_REQUEST))
 }
@@ -74,6 +80,7 @@ pub fn routes(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp:
     .or(get_validator_detail())
     .or(get_validator_trend(db.clone()))
     .or(get_1kv_validators())
+    .or(get_nominators())
     .or(
         warp::path("api").and(warp::path("allValidators")).and(warp::path::end())
         .and(with_db(db.clone()))

@@ -1,3 +1,6 @@
+use std::error::Error;
+use std::fs::File;
+use std::io::BufReader;
 use std::sync::{Arc, RwLock};
 use serde::{Serialize, Deserialize};
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -12,6 +15,10 @@ pub struct Config {
 }
 
 impl Config {
+    pub fn init() {
+        let config = read_config("./config/config.json".to_string()).unwrap();
+        config.make_current();
+    }
     pub fn current() -> Arc<Config> {
         CURRENT_CONFIG.with(|c| c.read().unwrap().clone())
     }
@@ -22,4 +29,18 @@ impl Config {
 
 thread_local! {
     static CURRENT_CONFIG: RwLock<Arc<Config>> = RwLock::new(Default::default());
+}
+
+
+fn read_config(path: String) -> Result<Config, Box<dyn Error>> {
+    
+    let file = File::open(path);
+    match file {
+        Ok(file) => {
+            let reader = BufReader::new(file);
+            let config: Config = serde_json::from_reader(reader)?;
+            Ok(config)
+        }
+        Err(e) => Err(Box::new(e))
+    }
 }

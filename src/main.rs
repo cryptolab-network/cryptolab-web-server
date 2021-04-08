@@ -4,10 +4,7 @@ mod types;
 mod cache;
 mod config;
 
-use std::error::Error;
-use std::net::Ipv4Addr;
-use std::fs::File;
-use std::io::BufReader;
+use std::env;
 use config::Config;
 use web::{WebServer, WebServerOptions};
 use db::Database;
@@ -17,10 +14,7 @@ use env_logger;
 async fn main() {
     // env::set_var("RUST_LOG", "warp");
     env_logger::init();
-
-    let config = read_config("./config/config.json".to_string()).unwrap();
-    config.make_current();
-
+    Config::init();
     let mut kusama_db = Database::new(Config::current().db_address.parse().unwrap(),
         Config::current().db_port, Config::current().kusama_db_name.as_str());
     let result = kusama_db.connect().await;
@@ -38,17 +32,5 @@ async fn main() {
             server.start().await;
         }
         Err(e) => panic!("Failed to connect to the Kusama Database")
-    }
-}
-
-fn read_config(path: String) -> Result<Config, Box<Error>> {
-    let file = File::open(path);
-    match file {
-        Ok(file) => {
-            let reader = BufReader::new(file);
-            let config: Config = serde_json::from_reader(reader)?;
-            Ok(config)
-        }
-        Err(e) => Err(Box::new(e))
     }
 }
