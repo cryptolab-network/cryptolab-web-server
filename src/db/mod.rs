@@ -7,6 +7,7 @@ use mongodb::{Client, options::ClientOptions};
 use mongodb::bson::{self, Bson, doc};
 use types::{ValidatorNominationInfo};
 use super::types;
+use super::config::Config;
 
 // Define our error types. These may be customized for our error handling cases.
 // Now we will be able to write our own errors, defer to an underlying error
@@ -41,8 +42,16 @@ impl Database {
     }
 
     pub async fn connect(&mut self) -> Result<(), Box<dyn Error>> {
-        // Parse a connection string into an options struct.
-        let url = format!("mongodb://{}:{}/{}", self.ip, self.port, self.db_name);
+        let need_credential = Config::current().db_has_credential;
+        let mut url = "mongodb://".to_string();
+        if need_credential {
+            if let Some(username) = Config::current().db_username.to_owned() {
+                if let Some(password) = Config::current().db_password.to_owned() {
+                    url += format!("{}:{}@", username, password).as_str();
+                }
+            }
+        }
+        url += format!("{}:{}/{}", self.ip, self.port, self.db_name).as_str();
         let mut client_options = ClientOptions::parse(url.as_str()).await?;
         // Manually set an option.
         client_options.app_name = Some("cryptolab".to_string());

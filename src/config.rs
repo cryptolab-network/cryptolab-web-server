@@ -12,6 +12,9 @@ pub struct Config {
     pub port: u16,
     pub cache_file_path: String,
     pub cors_url: String,
+    pub db_has_credential: bool,
+    pub db_username: Option<String>,
+    pub db_password: Option<String>,
 }
 
 impl Config {
