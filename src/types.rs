@@ -220,7 +220,9 @@ pub struct OneKvNominator {
 #[serde(rename_all = "camelCase")]
 pub struct OneKvNominated {
     stash: String,
+    #[serde(deserialize_with="parse_stash_name")]
     name: String,
+    #[serde(deserialize_with="parse_elected")]
     elected: bool,
 }
 
@@ -251,4 +253,18 @@ where
         },
         _ => return Err(de::Error::custom("wrong type"))
     })
+}
+
+fn parse_stash_name<'de, D>(d: D) -> Result<String, D::Error> where D: Deserializer<'de> {
+    Deserialize::deserialize(d)
+        .map(|x: Option<_>| {
+            x.unwrap_or("N/A".to_string())
+        })
+}
+
+fn parse_elected<'de, D>(d: D) -> Result<bool, D::Error> where D: Deserializer<'de> {
+    Deserialize::deserialize(d)
+        .map(|x: Option<_>| {
+            x.unwrap_or(false)
+        })
 }
