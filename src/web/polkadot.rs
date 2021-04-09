@@ -3,7 +3,7 @@ use warp::Filter;
 use warp::http::{StatusCode};
 use serde::Deserialize;
 
-use super::super::cache;
+use super::super::polkadot_cache as cache;
 use super::super::db::Database;
 
 #[derive(Deserialize)]
@@ -29,12 +29,6 @@ fn get_validator_trend(db: Database) -> impl Filter<Extract=impl warp::Reply, Er
     })
 }
 
-fn get_1kv_validators() -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
-    let path = warp::path("valid").and(warp::path::end())
-        .map(|| warp::reply::json(&cache::get_1kv_info_detail()));
-    path
-}
-
 fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error=std::convert::Infallible> + Clone {
     warp::any().map(move || db.clone())
 }
@@ -48,10 +42,7 @@ fn get_validator_detail() -> impl Filter<Extract=impl warp::Reply, Error=warp::R
     let path = warp::path("validDetail")
         .and(warp::path::end())
         .and(warp::query().map(|opt: ValidDetailOptions| 
-            if opt.option == "1kv" {
-                warp::reply::json(&cache::get_1kv_info_simple())
-            }
-            else if opt.option == "all" {
+            if opt.option == "all" {
                 warp::reply::json(&cache::get_validators())
             }
             else { 
@@ -77,7 +68,6 @@ pub fn routes(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp:
     .and(get_validators()
     .or(get_validator_detail())
     .or(get_validator_trend(db.clone()))
-    .or(get_1kv_validators())
     .or(get_nominators())
     .or(
         warp::path("allValidators").and(warp::path::end())

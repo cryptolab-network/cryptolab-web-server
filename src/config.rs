@@ -11,6 +11,7 @@ pub struct Config {
     pub polkadot_db_name: String,
     pub port: u16,
     pub cache_file_path: String,
+    pub cache_file_path_polkadot: String,
     pub cors_url: String,
     pub db_has_credential: bool,
     pub db_username: Option<String>,

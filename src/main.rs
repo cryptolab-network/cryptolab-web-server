@@ -3,8 +3,8 @@ mod db;
 mod types;
 mod cache;
 mod config;
+mod polkadot_cache;
 
-use std::env;
 use config::Config;
 use web::{WebServer, WebServerOptions};
 use db::Database;

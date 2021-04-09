@@ -3,6 +3,9 @@ use super::db::Database;
 mod kusama;
 mod polkadot;
 use super::config::Config;
+use warp::http::StatusCode;
+use warp::Rejection;
+use std::{convert::Infallible};
 
 pub struct WebServerOptions {
     pub kusama_db: Database,
@@ -24,10 +27,24 @@ impl WebServer {
         }
     }
 
-    fn initialize_routes(&self) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    fn initialize_routes(&self) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
         let routes = 
         kusama::routes(self.kusama_db.clone())
-        .or(polkadot::routes(self.polkadot_db.clone()));
+        .or(polkadot::routes(self.polkadot_db.clone()))
+        .recover(|error: Rejection| async move {
+            // Do prettier error reporting for the default error here.
+            if error.is_not_found() {
+                Ok(warp::reply::with_status(
+                    String::from("Data not found"),
+                    StatusCode::NOT_FOUND,
+                ))
+            } else {
+                Ok(warp::reply::with_status(
+                    String::from("Internal error"),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                ))
+            }
+        });
         routes
     }
 

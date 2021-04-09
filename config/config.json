@@ -4,11 +4,12 @@
     "kusama_db_name": "kusama",
     "polkadot_db_name": "polkadot",
     "db_has_credential": true,
-    "db_username": "admin",
-    "db_password": "moxa",
+    "db_username": "cryptoDbUser",
+    "db_password": "G0Ti5C5IFQHr",
 
     "port": 3030,
     "cors_url": "http://127.0.0.1:8080",
 
-    "cache_file_path": "E:/git/validator/src/data/data.json"
+    "cache_file_path": "E:/git/validator/src/data/data.json",
+    "cache_file_path_polkadot": "E:/git/validator/src/data/data_polkadot.json"
 }
