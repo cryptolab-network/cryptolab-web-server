@@ -4,7 +4,7 @@ use std::net::Ipv4Addr;
 use std::error::Error;
 use futures::StreamExt;
 use mongodb::{Client, options::ClientOptions};
-use mongodb::bson::{self, Bson, doc};
+use mongodb::bson::{self, Bson, doc, bson};
 use types::{ValidatorNominationInfo};
 use super::types;
 use super::config::Config;
@@ -132,10 +132,13 @@ impl Database {
                     let id  = _data.as_document().unwrap().get("id");
                     let status_change =  _data.as_document().unwrap().get("statusChange");
                     let identity = _data.as_document().unwrap().get("identity");
+                    let default_identity = bson!({
+                        "display": ""
+                    });
                     let output = doc! {
                         "id": id.unwrap(),
                         "statusChange": status_change.unwrap(),
-                        "identity": identity.unwrap(),
+                        "identity": identity.unwrap_or_else(|| &default_identity),
                         "info": {
                             "nominators": doc.get_array("nominators").unwrap(),
                             "era": doc.get("era").unwrap(),
