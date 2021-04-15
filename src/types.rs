@@ -169,7 +169,7 @@ pub struct Identity {
 pub struct ValidatorNominationInfo {
     id: String,
     status_change: StatusChange,
-    identity: Identity,
+    identity: Option<Identity>,
     info: NominationInfo,
 }
 
@@ -178,7 +178,7 @@ pub struct ValidatorNominationInfo {
 pub struct ValidatorNominationTrend {
     id: String,
     status_change: StatusChange,
-    identity: Identity,
+    identity: Option<Identity>,
     info: Vec<NominationInfo>,
 }
 
