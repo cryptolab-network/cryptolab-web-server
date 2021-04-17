@@ -71,13 +71,14 @@ pub struct ValidatorInfo1kvSimple {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct StakingInfo {
-    account_id: String,
-    exposure: Exposure,
-    nominators: Vec<Nominator>,
+    // account_id: String,
+    // exposure: Exposure,
+    // nominators: Vec<Nominator>,
     staking_ledger: StakingLedger,
+    #[serde(alias = "stash", alias = "stashId")]
     stash_id: String,
     validator_prefs: ValidatorPrefs,
-    identity: Identity,
+    // identity: Identity,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -130,6 +131,7 @@ pub struct Nominator {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct NominatorNomination {
+    #[serde(alias = "address", alias = "accountId")]
     account_id: String,
     balance: Balance,
     targets: Vec<String>,
@@ -146,6 +148,7 @@ pub struct Balance {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct StakingLedger {
+    #[serde(alias = "stash", alias = "stashId")]
     stash: String,
     #[serde(deserialize_with = "from_hex")]
     total: u128,
