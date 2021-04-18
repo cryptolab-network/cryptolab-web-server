@@ -104,6 +104,7 @@ pub struct ValidatorInfo {
     staking_ledger: StakingLedger,
     validator_prefs: ValidatorPrefs,
     identity: Identity,
+    unclaimed_eras: Option<Vec<u32>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

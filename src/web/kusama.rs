@@ -38,6 +38,18 @@ fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error=std::conver
     warp::any().map(move || db.clone())
 }
 
+fn get_validator_unclaimed_eras(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
+    warp::path("api").and(warp::path("validator")).and(with_db(db))
+    .and(warp::path::param()).and(warp::path("unclaimedEras")).and(warp::path::end())
+    .and_then(|db: Database, stash: String| async move {
+        let validator = db.get_validator_unclaimed_eras(stash).await;
+        match validator {
+            Ok(v) => Ok(warp::reply::json(&v)),
+            Err(e) => Err(warp::reject::not_found())
+        }
+    })
+}
+
 async fn get_data_from_db(db: Database, era: u32) -> Result<warp::reply::WithStatus<warp::reply::Json>, Infallible> {
     let result = db.get_all_validator_info_of_era(era, 0, 2000).await;
     Ok(warp::reply::with_status(warp::reply::json(&result.unwrap()), StatusCode::OK))
@@ -88,6 +100,7 @@ pub fn routes(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp:
     .or(get_1kv_validators())
     .or(get_nominators())
     .or(get_1kv_nominators())
+    .or(get_validator_unclaimed_eras(db.clone()))
     .or(
         warp::path("api").and(warp::path("allValidators")).and(warp::path::end())
         .and(with_db(db.clone()))

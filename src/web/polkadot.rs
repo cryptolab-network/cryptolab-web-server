@@ -29,6 +29,18 @@ fn get_validator_trend(db: Database) -> impl Filter<Extract=impl warp::Reply, Er
     })
 }
 
+fn get_validator_unclaimed_eras(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
+    warp::path("validator").and(with_db(db))
+    .and(warp::path::param()).and(warp::path("unclaimedEras")).and(warp::path::end())
+    .and_then(|db: Database, stash: String| async move {
+        let validator = db.get_validator_unclaimed_eras(stash).await;
+        match validator {
+            Ok(v) => Ok(warp::reply::json(&v)),
+            Err(e) => Err(warp::reject::not_found())
+        }
+    })
+}
+
 fn with_db(db: Database) -> impl Filter<Extract = (Database,), Error=std::convert::Infallible> + Clone {
     warp::any().map(move || db.clone())
 }
@@ -69,6 +81,7 @@ pub fn routes(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp:
     .or(get_validator_detail())
     .or(get_validator_trend(db.clone()))
     .or(get_nominators())
+    .or(get_validator_unclaimed_eras(db.clone()))
     .or(
         warp::path("allValidators").and(warp::path::end())
         .and(with_db(db.clone()))

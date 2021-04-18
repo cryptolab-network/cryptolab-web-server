@@ -98,6 +98,35 @@ impl Database {
         }
     }
 
+    pub async fn get_validator_unclaimed_eras(&self, stash: String) -> Result<Vec<i32>, DatabaseError> {
+        let mut array = Vec::new();
+        let match_command = doc! {
+            "$match":{
+                "validator": stash
+            },
+        };
+
+        match self.client.as_ref().ok_or(DatabaseError {message: "Mongodb client is not working as expected.".to_string()}) {
+            Ok(client) => {
+                let db = client.database(&self.db_name);
+                let mut cursor = db.collection("unclaimedEraInfo")
+                    .aggregate(vec![match_command], None).await.unwrap();
+                while let Some(result) = cursor.next().await {
+                    let doc = result.unwrap();
+                    let eras= doc.get_array("eras").unwrap();
+                    for era in eras {
+                        array.push(era.as_i32().unwrap());
+                    }
+                }
+                Ok(array)
+            }
+            Err(e) => {
+                println!("{}", e);
+                Err(e)
+            }
+        }
+    }
+
     pub async fn get_all_validator_info_of_era(&self, era: u32, page: u32, size: u32) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
         let mut array = Vec::new();
         let match_command = doc! {
@@ -113,6 +142,14 @@ impl Database {
                 "as": "data"
             },
         };
+        let lookup_command2 = doc! {
+            "$lookup": {
+                "from": "unclaimedEraInfo",
+                "localField": "validator",
+                "foreignField": "validator",
+                "as": "unclaimedEraInfo"
+            },
+        };
         let skip_command = doc! {
             "$skip": page * size,
         };
@@ -123,18 +160,25 @@ impl Database {
             Ok(client) => {
                 let db = client.database(&self.db_name);
                 let mut cursor = db.collection("nomination")
-                    .aggregate(vec![match_command, lookup_command, skip_command, limit_command], None).await.unwrap();
+                    .aggregate(vec![match_command, lookup_command, lookup_command2, skip_command, limit_command], None).await.unwrap();
                 while let Some(result) = cursor.next().await {
                     let doc = result.unwrap();
                     // println!("{}", doc);
                     let _data = &doc.get_array("data").unwrap()[0];
-                    
                     let id  = _data.as_document().unwrap().get("id");
+                    let default_unclaimed_eras = bson! ({
+                        "eras": [],
+                        "validator": id.unwrap(),
+                    });
+                    let mut unclaimed_era_info = doc.get("unclaimedEraInfo").unwrap_or_else(|| &default_unclaimed_eras);
                     let status_change =  _data.as_document().unwrap().get("statusChange");
                     let identity = _data.as_document().unwrap().get("identity");
                     let default_identity = bson!({
                         "display": ""
                     });
+                    if unclaimed_era_info.as_document() == None {
+                        unclaimed_era_info = &default_unclaimed_eras;
+                    }
                     let output = doc! {
                         "id": id.unwrap(),
                         "statusChange": status_change.unwrap(),
@@ -145,15 +189,9 @@ impl Database {
                             "commission": doc.get("commission").unwrap(),
                             "apy": doc.get("apy").unwrap(),
                             "exposure": doc.get("exposure").unwrap(),
+                            "unclaimedEras": unclaimed_era_info.as_document().unwrap().get_array("eras").unwrap(),
                         }
                     };
-                    // info: {
-                    //     nominators: nomination.nominators,
-                    //     era: nomination.era,
-                    //     exposure: nomination.exposure,
-                    //     commission: nomination.commission,
-                    //     apy: nomination.apy
-                    //   }
                     let info: ValidatorNominationInfo = bson::from_bson(Bson::Document(output)).unwrap();
                     array.push(info);
                 }
