@@ -104,10 +104,10 @@ pub struct ValidatorInfo {
     staking_ledger: StakingLedger,
     validator_prefs: ValidatorPrefs,
     identity: Identity,
-    unclaimed_eras: Option<Vec<u32>>,
+    unclaimed_eras: Option<Vec<i32>>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Exposure {
     #[serde(deserialize_with = "from_hex")]
     total: u128,
@@ -116,14 +116,14 @@ pub struct Exposure {
     others: Vec<Others>
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Others {
     who: String,
     #[serde(deserialize_with = "from_hex")]
     value: u128,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Nominator {
     address: String,
     balance: Balance
@@ -138,7 +138,7 @@ pub struct NominatorNomination {
     targets: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Balance {
     #[serde(deserialize_with = "from_hex")]
@@ -163,12 +163,12 @@ pub struct ValidatorPrefs {
     blocked: bool
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Identity {
     display: Option<String>
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ValidatorNominationInfo {
     id: String,
@@ -186,18 +186,19 @@ pub struct ValidatorNominationTrend {
     info: Vec<NominationInfo>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct StatusChange {
     commission: u32,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NominationInfo {
     nominators: Vec<Nominator>,
     era: u32,
     exposure: Exposure,
     commission: f32,
     apy: f32,
+    unclaimed_eras: Option<Vec<i32>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -236,7 +237,6 @@ fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
           D: Deserializer<'de>
 {
     let s = String::deserialize(deserializer)?;
-    println!("{}", s);
     T::from_str(&s).map_err(de::Error::custom)
 }
 

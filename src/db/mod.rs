@@ -170,15 +170,18 @@ impl Database {
                         "eras": [],
                         "validator": id.unwrap(),
                     });
-                    let mut unclaimed_era_info = doc.get("unclaimedEraInfo").unwrap_or_else(|| &default_unclaimed_eras);
+                    let mut unclaimed_era_info = &doc.get_array("unclaimedEraInfo").unwrap()[0];
                     let status_change =  _data.as_document().unwrap().get("statusChange");
                     let identity = _data.as_document().unwrap().get("identity");
                     let default_identity = bson!({
                         "display": ""
                     });
+                    // println!("{}", unclaimed_era_info);
                     if unclaimed_era_info.as_document() == None {
                         unclaimed_era_info = &default_unclaimed_eras;
                     }
+                    let a = doc.get("exposure").unwrap();
+                    let b = unclaimed_era_info.as_document().unwrap().get_array("eras").unwrap();
                     let output = doc! {
                         "id": id.unwrap(),
                         "statusChange": status_change.unwrap(),
@@ -189,11 +192,14 @@ impl Database {
                             "commission": doc.get("commission").unwrap(),
                             "apy": doc.get("apy").unwrap(),
                             "exposure": doc.get("exposure").unwrap(),
-                            "unclaimedEras": unclaimed_era_info.as_document().unwrap().get_array("eras").unwrap(),
+                            "unclaimed_eras": unclaimed_era_info.as_document().unwrap().get_array("eras").unwrap(),
                         }
                     };
+                    // println!("{:?}", output);
                     let info: ValidatorNominationInfo = bson::from_bson(Bson::Document(output)).unwrap();
-                    array.push(info);
+                    array.push(info.clone());
+                    // println!("{:?}", unclaimed_era_info.as_document().unwrap().get_array("eras").unwrap());
+                    // println!("{:?}", info);
                 }
                 Ok(array)
             }
