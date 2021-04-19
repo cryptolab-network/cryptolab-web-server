@@ -176,19 +176,7 @@ impl Database {
                     let default_identity = bson!({
                         "display": ""
                     });
-                    let mut output = doc! {
-                        "id": id.unwrap(),
-                        "statusChange": status_change.unwrap(),
-                        "identity": identity.unwrap_or_else(|| &default_identity),
-                        "info": {
-                            "nominators": doc.get_array("nominators").unwrap(),
-                            "era": doc.get("era").unwrap(),
-                            "commission": doc.get("commission").unwrap(),
-                            "apy": doc.get("apy").unwrap(),
-                            "exposure": doc.get("exposure").unwrap(),
-                            "unclaimed_eras": unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap(),
-                        }
-                    };
+                    let mut output = doc! {};
                     if unclaimed_era_infos.len() == 0 {
                         output = doc! {
                             "id": id.unwrap(),
@@ -200,7 +188,22 @@ impl Database {
                                 "commission": doc.get("commission").unwrap(),
                                 "apy": doc.get("apy").unwrap(),
                                 "exposure": doc.get("exposure").unwrap(),
-                                "unclaimed_eras": default_unclaimed_eras,
+                                "unclaimed_eras": bson! ([]),
+                            }
+                        };
+                    }
+                    else {
+                        output = doc! {
+                            "id": id.unwrap(),
+                            "statusChange": status_change.unwrap(),
+                            "identity": identity.unwrap_or_else(|| &default_identity),
+                            "info": {
+                                "nominators": doc.get_array("nominators").unwrap(),
+                                "era": doc.get("era").unwrap(),
+                                "commission": doc.get("commission").unwrap(),
+                                "apy": doc.get("apy").unwrap(),
+                                "exposure": doc.get("exposure").unwrap(),
+                                "unclaimed_eras": unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap(),
                             }
                         };
                     }
