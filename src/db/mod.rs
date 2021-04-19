@@ -176,7 +176,7 @@ impl Database {
                     let default_identity = bson!({
                         "display": ""
                     });
-                    let output = doc! {
+                    let mut output = doc! {
                         "id": id.unwrap(),
                         "statusChange": status_change.unwrap(),
                         "identity": identity.unwrap_or_else(|| &default_identity),
@@ -189,6 +189,21 @@ impl Database {
                             "unclaimed_eras": unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap(),
                         }
                     };
+                    if unclaimed_era_infos.len() == 0 {
+                        output = doc! {
+                            "id": id.unwrap(),
+                            "statusChange": status_change.unwrap(),
+                            "identity": identity.unwrap_or_else(|| &default_identity),
+                            "info": {
+                                "nominators": doc.get_array("nominators").unwrap(),
+                                "era": doc.get("era").unwrap(),
+                                "commission": doc.get("commission").unwrap(),
+                                "apy": doc.get("apy").unwrap(),
+                                "exposure": doc.get("exposure").unwrap(),
+                                "unclaimed_eras": default_unclaimed_eras,
+                            }
+                        };
+                    }
                     // println!("{:?}", output);
                     let info: ValidatorNominationInfo = bson::from_bson(Bson::Document(output)).unwrap();
                     array.push(info.clone());
