@@ -166,22 +166,16 @@ impl Database {
                     // println!("{}", doc);
                     let _data = &doc.get_array("data").unwrap()[0];
                     let id  = _data.as_document().unwrap().get("id");
-                    let default_unclaimed_eras = bson! ({
+                    let default_unclaimed_eras = vec!(bson! ({
                         "eras": [],
                         "validator": id.unwrap(),
-                    });
-                    let mut unclaimed_era_info = &doc.get_array("unclaimedEraInfo").unwrap()[0];
+                    }));
+                    let unclaimed_era_infos = doc.get_array("unclaimedEraInfo").unwrap_or(&default_unclaimed_eras);
                     let status_change =  _data.as_document().unwrap().get("statusChange");
                     let identity = _data.as_document().unwrap().get("identity");
                     let default_identity = bson!({
                         "display": ""
                     });
-                    // println!("{}", unclaimed_era_info);
-                    if unclaimed_era_info.as_document() == None {
-                        unclaimed_era_info = &default_unclaimed_eras;
-                    }
-                    let a = doc.get("exposure").unwrap();
-                    let b = unclaimed_era_info.as_document().unwrap().get_array("eras").unwrap();
                     let output = doc! {
                         "id": id.unwrap(),
                         "statusChange": status_change.unwrap(),
@@ -192,7 +186,7 @@ impl Database {
                             "commission": doc.get("commission").unwrap(),
                             "apy": doc.get("apy").unwrap(),
                             "exposure": doc.get("exposure").unwrap(),
-                            "unclaimed_eras": unclaimed_era_info.as_document().unwrap().get_array("eras").unwrap(),
+                            "unclaimed_eras": unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap(),
                         }
                     };
                     // println!("{:?}", output);
