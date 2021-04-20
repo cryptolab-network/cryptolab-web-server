@@ -47,7 +47,7 @@ pub struct ValidatorDetailAll {
 #[serde(rename_all = "camelCase")]
 pub struct ValidatorInfo1kv {
     aggregate: Aggregate,
-    rank: u32,
+    rank: i32,
     inclusion: f32,
     name: String,
     stash: String,
@@ -175,6 +175,7 @@ pub struct ValidatorNominationInfo {
     status_change: StatusChange,
     identity: Option<Identity>,
     info: NominationInfo,
+    rewards: Option<ValidatorTotalReward>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -184,6 +185,29 @@ pub struct ValidatorNominationTrend {
     status_change: StatusChange,
     identity: Option<Identity>,
     info: Vec<NominationInfo>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatorTotalReward {
+    start: i32,
+    end: i32,
+    total: f32,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StashRewards {
+    #[serde(alias = "id")]
+    pub stash: String,
+    pub era_rewards: Vec<StashEraReward>
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StashEraReward {
+    era: i32,
+    amount: f32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
