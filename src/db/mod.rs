@@ -5,7 +5,7 @@ use std::error::Error;
 use futures::StreamExt;
 use mongodb::{Client, options::ClientOptions};
 use mongodb::bson::{self, Bson, doc, bson};
-use types::{ValidatorNominationInfo};
+use types::{StashRewards, ValidatorNominationInfo};
 use super::types;
 use super::config::Config;
 
@@ -230,6 +230,38 @@ impl Database {
                     .find_one(None, None).await.unwrap();
                 let data = bson::from_bson(Bson::Document(cursor.unwrap())).unwrap();
                 Ok(data)
+            }
+            Err(e) => {
+                println!("{}", e);
+                Err(e)
+            }
+        }
+    }
+
+    pub async fn get_stash_reward(&self, stash: String) -> Result<types::StashRewards, DatabaseError> {
+        let _stash = stash.clone();
+        match self.client.as_ref().ok_or(DatabaseError {message: "Mongodb client is not working as expected.".to_string()}) {
+            Ok(client) => {
+                let db = client.database(&self.db_name);
+                let mut cursor = db.collection("stashInfo").find(doc! {"stash": _stash}, None).await.unwrap();
+                let mut era_rewards: Vec<types::StashEraReward> = vec![];
+                while let Some(stash_reward) = cursor.next().await {
+                    let doc = stash_reward.unwrap();
+                    let mut era = 0;
+                    match doc.get("era").unwrap().as_i32() {
+                        Some(_era)=> {era = _era},
+                        None => continue
+                    }
+                    let amount = doc.get("amount").unwrap().as_f64().unwrap_or_else(|| 0.0);
+                    era_rewards.push(types::StashEraReward{
+                        era: era,
+                        amount: amount,
+                    })
+                }
+                Ok(types::StashRewards {
+                    stash: stash,
+                    era_rewards: era_rewards
+                })
             }
             Err(e) => {
                 println!("{}", e);

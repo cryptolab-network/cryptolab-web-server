@@ -206,8 +206,8 @@ pub struct StashRewards {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct StashEraReward {
-    era: i32,
-    amount: f32,
+    pub era: i32,
+    pub amount: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -85,6 +85,18 @@ fn get_1kv_nominators() -> impl Filter<Extract=impl warp::Reply, Error=warp::Rej
     path
 }
 
+fn get_stash_rewards(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
+    warp::path("api").and(warp::path("stash")).and(with_db(db))
+    .and(warp::path::param()).and(warp::path("rewards")).and(warp::path::end())
+    .and_then(|db: Database, stash: String| async move {
+        let validator = db.get_stash_reward(stash).await;
+        match validator {
+            Ok(v) => Ok(warp::reply::json(&v)),
+            Err(e) => Err(warp::reject::not_found())
+        }
+    })
+}
+
 async fn handle_query_parameter_err() -> Result<warp::reply::WithStatus<warp::reply::Json>, Infallible> {
     Ok(warp::reply::with_status(warp::reply::json(&""), StatusCode::BAD_REQUEST))
 }
@@ -101,6 +113,7 @@ pub fn routes(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp:
     .or(get_nominators())
     .or(get_1kv_nominators())
     .or(get_validator_unclaimed_eras(db.clone()))
+    .or(get_stash_rewards(db.clone()))
     .or(
         warp::path("api").and(warp::path("allValidators")).and(warp::path::end())
         .and(with_db(db.clone()))
