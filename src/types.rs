@@ -208,6 +208,7 @@ pub struct StashRewards {
 pub struct StashEraReward {
     pub era: i32,
     pub amount: f64,
+    pub timestamp: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

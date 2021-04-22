@@ -253,9 +253,11 @@ impl Database {
                         None => continue
                     }
                     let amount = doc.get("amount").unwrap().as_f64().unwrap_or_else(|| 0.0);
+                    let timestamp = doc.get("timestamp").unwrap().as_f64().unwrap();
                     era_rewards.push(types::StashEraReward{
                         era: era,
                         amount: amount,
+                        timestamp: (timestamp).round() as i64,
                     })
                 }
                 Ok(types::StashRewards {
