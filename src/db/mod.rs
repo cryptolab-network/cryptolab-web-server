@@ -1,13 +1,12 @@
-
+use super::config::Config;
+use super::types;
+use futures::StreamExt;
+use mongodb::bson::{self, Bson, Document, bson, doc};
+use mongodb::{options::ClientOptions, Client};
+use std::error::Error;
 use std::fmt;
 use std::net::Ipv4Addr;
-use std::error::Error;
-use futures::StreamExt;
-use mongodb::{Client, options::ClientOptions};
-use mongodb::bson::{self, Bson, doc, bson};
 use types::{StashRewards, ValidatorNominationInfo};
-use super::types;
-use super::config::Config;
 
 // Define our error types. These may be customized for our error handling cases.
 // Now we will be able to write our own errors, defer to an underlying error
@@ -28,7 +27,7 @@ pub struct Database {
     ip: Ipv4Addr,
     port: u16,
     db_name: String,
-    client: Option<Client>
+    client: Option<Client>,
 }
 
 impl Database {
@@ -37,7 +36,7 @@ impl Database {
             ip: ip,
             port: port,
             db_name: db_name.to_string(),
-            client: None
+            client: None,
         }
     }
 
@@ -61,7 +60,10 @@ impl Database {
         Ok(())
     }
 
-    pub async fn get_validator(&self, stash: String) -> Result<types::ValidatorNominationTrend, DatabaseError> {
+    pub async fn get_validator(
+        &self,
+        stash: String,
+    ) -> Result<types::ValidatorNominationTrend, DatabaseError> {
         let cloned_stash = stash.clone();
         let match_command = doc! {
             "$match":{
@@ -77,15 +79,21 @@ impl Database {
             },
         };
         // let mut array = Vec::new();
-        match self.client.as_ref().ok_or(DatabaseError {message: "Mongodb client is not working as expected.".to_string()}) {
+        match self.client.as_ref().ok_or(DatabaseError {
+            message: "Mongodb client is not working as expected.".to_string(),
+        }) {
             Ok(client) => {
                 let db = client.database(&self.db_name);
-                let mut cursor = db.collection("validator")
-                    .aggregate(vec![match_command, lookup_command], None).await.unwrap();
+                let mut cursor = db
+                    .collection("validator")
+                    .aggregate(vec![match_command, lookup_command], None)
+                    .await
+                    .unwrap();
                 while let Some(result) = cursor.next().await {
                     let unwrapped = result.unwrap();
-                    let info: types::ValidatorNominationTrend = bson::from_bson(Bson::Document(unwrapped)).unwrap();
-                    return Ok(info)
+                    let info: types::ValidatorNominationTrend =
+                        bson::from_bson(Bson::Document(unwrapped)).unwrap();
+                    return Ok(info);
                 }
                 Err(DatabaseError {
                     message: format!("Failed to find validator with stash {}", cloned_stash),
@@ -98,7 +106,10 @@ impl Database {
         }
     }
 
-    pub async fn get_validator_unclaimed_eras(&self, stash: String) -> Result<Vec<i32>, DatabaseError> {
+    pub async fn get_validator_unclaimed_eras(
+        &self,
+        stash: String,
+    ) -> Result<Vec<i32>, DatabaseError> {
         let mut array = Vec::new();
         let match_command = doc! {
             "$match":{
@@ -106,14 +117,19 @@ impl Database {
             },
         };
 
-        match self.client.as_ref().ok_or(DatabaseError {message: "Mongodb client is not working as expected.".to_string()}) {
+        match self.client.as_ref().ok_or(DatabaseError {
+            message: "Mongodb client is not working as expected.".to_string(),
+        }) {
             Ok(client) => {
                 let db = client.database(&self.db_name);
-                let mut cursor = db.collection("unclaimedEraInfo")
-                    .aggregate(vec![match_command], None).await.unwrap();
+                let mut cursor = db
+                    .collection("unclaimedEraInfo")
+                    .aggregate(vec![match_command], None)
+                    .await
+                    .unwrap();
                 while let Some(result) = cursor.next().await {
                     let doc = result.unwrap();
-                    let eras= doc.get_array("eras").unwrap();
+                    let eras = doc.get_array("eras").unwrap();
                     for era in eras {
                         array.push(era.as_i32().unwrap());
                     }
@@ -127,7 +143,12 @@ impl Database {
         }
     }
 
-    pub async fn get_all_validator_info_of_era(&self, era: u32, page: u32, size: u32) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
+    pub async fn get_all_validator_info_of_era(
+        &self,
+        era: u32,
+        page: u32,
+        size: u32,
+    ) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
         let mut array = Vec::new();
         let match_command = doc! {
             "$match":{
@@ -156,22 +177,81 @@ impl Database {
         let limit_command = doc! {
             "$limit": size,
         };
-        match self.client.as_ref().ok_or(DatabaseError {message: "Mongodb client is not working as expected.".to_string()}) {
+        self.do_get_validator_info(array,  vec![
+                match_command,
+                lookup_command,
+                lookup_command2,
+                skip_command,
+                limit_command,
+            ]).await
+    }
+
+    pub async fn get_validator_info(&self, stashes: Vec<String>, era: u32) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
+        println!("{:?}", stashes);
+        let mut array = Vec::new();
+        let match_command = doc! {
+            "$match":{
+                "$and": [
+                    {"era": era},
+                    {"validator": {
+                        "$in": stashes
+                    }}
+                ]
+            },
+        };
+        let lookup_command = doc! {
+            "$lookup": {
+                "from": "validator",
+                "localField": "validator",
+                "foreignField": "id",
+                "as": "data"
+            },
+        };
+        let lookup_command2 = doc! {
+            "$lookup": {
+                "from": "unclaimedEraInfo",
+                "localField": "validator",
+                "foreignField": "validator",
+                "as": "unclaimedEraInfo"
+            },
+        };
+        let skip_command = doc! {
+        };
+        let limit_command = doc! {
+        };
+        self.do_get_validator_info(array, vec! [
+            match_command,
+            lookup_command,
+            lookup_command2,
+        ]).await
+    }
+
+    async fn do_get_validator_info(&self, mut array: Vec<ValidatorNominationInfo>, pipeline: Vec<Document> ) 
+        -> Result<Vec<ValidatorNominationInfo>, DatabaseError> {
+        match self.client.as_ref().ok_or(DatabaseError {
+            message: "Mongodb client is not working as expected.".to_string(),
+        }) {
             Ok(client) => {
                 let db = client.database(&self.db_name);
-                let mut cursor = db.collection("nomination")
-                    .aggregate(vec![match_command, lookup_command, lookup_command2, skip_command, limit_command], None).await.unwrap();
+                let mut cursor = db
+                    .collection("nomination")
+                    .aggregate( pipeline,
+                        None,
+                    )
+                    .await
+                    .unwrap();
                 while let Some(result) = cursor.next().await {
                     let doc = result.unwrap();
-                    // println!("{}", doc);
                     let _data = &doc.get_array("data").unwrap()[0];
-                    let id  = _data.as_document().unwrap().get("id");
-                    let default_unclaimed_eras = vec!(bson! ({
+                    let id = _data.as_document().unwrap().get("id");
+                    let default_unclaimed_eras = vec![bson! ({
                         "eras": [],
                         "validator": id.unwrap(),
-                    }));
-                    let unclaimed_era_infos = doc.get_array("unclaimedEraInfo").unwrap_or(&default_unclaimed_eras);
-                    let status_change =  _data.as_document().unwrap().get("statusChange");
+                    })];
+                    let unclaimed_era_infos = doc
+                        .get_array("unclaimedEraInfo")
+                        .unwrap_or(&default_unclaimed_eras);
+                    let status_change = _data.as_document().unwrap().get("statusChange");
                     let identity = _data.as_document().unwrap().get("identity");
                     let default_identity = bson!({
                         "display": ""
@@ -191,8 +271,7 @@ impl Database {
                                 "unclaimed_eras": bson! ([]),
                             }
                         };
-                    }
-                    else {
+                    } else {
                         output = doc! {
                             "id": id.unwrap(),
                             "statusChange": status_change.unwrap(),
@@ -208,7 +287,8 @@ impl Database {
                         };
                     }
                     // println!("{:?}", output);
-                    let info: ValidatorNominationInfo = bson::from_bson(Bson::Document(output)).unwrap();
+                    let info: ValidatorNominationInfo =
+                        bson::from_bson(Bson::Document(output)).unwrap();
                     array.push(info.clone());
                     // println!("{:?}", unclaimed_era_info.as_document().unwrap().get_array("eras").unwrap());
                     // println!("{:?}", info);
@@ -223,11 +303,16 @@ impl Database {
     }
 
     pub async fn get_chain_info(&self) -> Result<types::ChainInfo, DatabaseError> {
-        match self.client.as_ref().ok_or(DatabaseError {message: "Mongodb client is not working as expected.".to_string()}) {
+        match self.client.as_ref().ok_or(DatabaseError {
+            message: "Mongodb client is not working as expected.".to_string(),
+        }) {
             Ok(client) => {
                 let db = client.database(&self.db_name);
-                let cursor = db.collection("chainInfo")
-                    .find_one(None, None).await.unwrap();
+                let cursor = db
+                    .collection("chainInfo")
+                    .find_one(None, None)
+                    .await
+                    .unwrap();
                 let data = bson::from_bson(Bson::Document(cursor.unwrap())).unwrap();
                 Ok(data)
             }
@@ -238,23 +323,32 @@ impl Database {
         }
     }
 
-    pub async fn get_stash_reward(&self, stash: String) -> Result<types::StashRewards, DatabaseError> {
+    pub async fn get_stash_reward(
+        &self,
+        stash: String,
+    ) -> Result<types::StashRewards, DatabaseError> {
         let _stash = stash.clone();
-        match self.client.as_ref().ok_or(DatabaseError {message: "Mongodb client is not working as expected.".to_string()}) {
+        match self.client.as_ref().ok_or(DatabaseError {
+            message: "Mongodb client is not working as expected.".to_string(),
+        }) {
             Ok(client) => {
                 let db = client.database(&self.db_name);
-                let mut cursor = db.collection("stashInfo").find(doc! {"stash": _stash}, None).await.unwrap();
+                let mut cursor = db
+                    .collection("stashInfo")
+                    .find(doc! {"stash": _stash}, None)
+                    .await
+                    .unwrap();
                 let mut era_rewards: Vec<types::StashEraReward> = vec![];
                 while let Some(stash_reward) = cursor.next().await {
                     let doc = stash_reward.unwrap();
                     let mut era = 0;
                     match doc.get("era").unwrap().as_i32() {
-                        Some(_era)=> {era = _era},
-                        None => continue
+                        Some(_era) => era = _era,
+                        None => continue,
                     }
                     let amount = doc.get("amount").unwrap().as_f64().unwrap_or_else(|| 0.0);
                     let timestamp = doc.get("timestamp").unwrap().as_f64().unwrap();
-                    era_rewards.push(types::StashEraReward{
+                    era_rewards.push(types::StashEraReward {
                         era: era,
                         amount: amount,
                         timestamp: (timestamp).round() as i64,
@@ -262,7 +356,7 @@ impl Database {
                 }
                 Ok(types::StashRewards {
                     stash: stash,
-                    era_rewards: era_rewards
+                    era_rewards: era_rewards,
                 })
             }
             Err(e) => {

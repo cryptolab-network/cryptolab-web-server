@@ -79,6 +79,29 @@ fn get_nominators() -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejecti
     path
 }
 
+fn get_nominated_validators(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
+    warp::path("api").and(warp::path("nominated")).and(with_db(db))
+        .and(warp::path("stash")).and(warp::path::param())
+        .and(warp::path::end()).and_then(|db: Database, stash: String| async move {
+            let result = 
+                cache::get_nominator(stash);
+                match result {
+                    Ok(nominator) => {
+                        let chain_info = db.get_chain_info().await.unwrap();
+                        let result = db.get_validator_info(nominator.targets, chain_info.active_era).await;
+                        match result {
+                            Ok(validators) => Ok(warp::reply::json(&validators)),
+                            Err(e) => Err(warp::reject::not_found())
+                        }
+                    },
+                    Err(e) => { 
+                        println!("{}", "failed to get nominated list from the cache");
+                        Err(warp::reject::not_found())
+                    }
+                }
+        })
+}
+
 fn get_1kv_nominators() -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
     let path = warp::path("api").and(warp::path("1kv")).and(warp::path("nominators"))
         .and(warp::path::end()).map(|| warp::reply::json(&cache::get_1kv_nominators()));
@@ -111,6 +134,7 @@ pub fn routes(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp:
     .or(get_validator_trend(db.clone()))
     .or(get_1kv_validators())
     .or(get_nominators())
+    .or(get_nominated_validators(db.clone()))
     .or(get_1kv_nominators())
     .or(get_validator_unclaimed_eras(db.clone()))
     .or(get_stash_rewards(db.clone()))

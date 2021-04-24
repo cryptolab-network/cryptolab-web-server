@@ -1,6 +1,17 @@
-use std::{fs, path::Path};
+use std::{fmt, fs, path::Path};
 use super::types;
 use super::config::Config;
+
+#[derive(Debug, Clone)]
+pub struct CacheError {
+    message: String,
+}
+
+impl fmt::Display for CacheError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Cache error: {}", self.message)
+    }
+}
 
 pub fn get_validators() -> Vec<types::ValidatorInfo> {
     Config::init();
@@ -23,4 +34,16 @@ pub fn get_nominators() -> Vec<types::NominatorNomination> {
     serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
     
     json.unwrap()
+}
+
+pub fn get_nominator(stash: String) -> Result<types::NominatorNomination, CacheError> {
+    let nominators = get_nominators();
+    for nominator in nominators {
+        if nominator.account_id == stash {
+            return Ok(nominator)
+        }
+    }
+    Err(CacheError {
+        message: "Cannot find stash in nominator cache".to_string(),
+    })
 }
