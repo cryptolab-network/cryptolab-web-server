@@ -329,7 +329,7 @@ impl Database {
                                 "commission": doc.get("commission").unwrap(),
                                 "apy": doc.get("apy").unwrap(),
                                 "exposure": doc.get("exposure").unwrap(),
-                                "unclaimed_eras": bson! ([]),
+                                "unclaimedEras": bson! ([]),
                             }
                         };
                     } else {
@@ -344,7 +344,7 @@ impl Database {
                                 "commission": doc.get("commission").unwrap(),
                                 "apy": doc.get("apy").unwrap(),
                                 "exposure": doc.get("exposure").unwrap(),
-                                "unclaimed_eras": unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap(),
+                                "unclaimedEras": unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap(),
                             }
                         };
                     }
