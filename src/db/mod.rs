@@ -67,7 +67,7 @@ impl Database {
         let cloned_stash = stash.clone();
         let match_command = doc! {
             "$match":{
-                "id": stash
+                "id": stash.clone()
             },
         };
         let lookup_command = doc! {
@@ -75,8 +75,32 @@ impl Database {
                 "from": "nomination",
                 "localField": "id",
                 "foreignField": "validator",
-                "as": "info"
+                "as": "info",
+                // "$project": {
+                //     "era": 1,
+                //     "exposure": 1,
+                //     "apy": 1,
+                //     "commission": 1,
+                //     "validator": 1,
+                // }
             },
+        };
+        let project_command = doc! {
+            "$project": {
+                "id": 1,
+                "identity": 1,
+                "statusChange": 1,
+                "rewards": 1,
+                "info.era": 1,
+                "info.exposure": 1,
+                "info.apy": 1,
+                "info.commission": 1,
+                "info.validator": 1,
+                "info.nominatorCount": {"$size": "$info.nominators"},
+            }
+        };
+        let unset_command = doc! {
+            "$unset": ["info.nominators"],
         };
         // let mut array = Vec::new();
         match self.client.as_ref().ok_or(DatabaseError {
@@ -86,13 +110,49 @@ impl Database {
                 let db = client.database(&self.db_name);
                 let mut cursor = db
                     .collection("validator")
-                    .aggregate(vec![match_command, lookup_command], None)
+                    .aggregate(vec![match_command, lookup_command, project_command, unset_command], None)
                     .await
                     .unwrap();
                 while let Some(result) = cursor.next().await {
                     let unwrapped = result.unwrap();
-                    let info: types::ValidatorNominationTrend =
+                    let mut info: types::ValidatorNominationTrend =
                         bson::from_bson(Bson::Document(unwrapped)).unwrap();
+                    let mut cursor2 = db
+                    .collection("nomination")
+                    .aggregate(vec![doc! {
+                        "$match":{
+                            "validator": stash.clone()
+                        },
+                    }, doc! {
+                        "$sort": {"era": -1}
+                    }, doc! {
+                        "$limit": 1
+                    }, doc! {
+                        "$project": {
+                            "era": 1,
+                            "exposure": 1,
+                            "apy": 1,
+                            "commission": 1,
+                            "validator": 1,
+                            "nominators": 1,
+                            "nominatorCount": {"$size": "$nominators"},
+                        }
+                    }], None)
+                    .await
+                    .unwrap();
+                    while let Some(result2) = cursor2.next().await {
+                        let info2: types::NominationInfo = bson::from_bson(Bson::Document(result2.unwrap())).unwrap();
+                        let mut index: i32 = -1;
+                        for (i, era_info) in info.info.iter().enumerate() {
+                            if era_info.era == info2.era {
+                                index = i as i32;
+                            }
+                        }
+                        if index >= 0 {
+                            info.info[index as usize].set_nominators(info2.nominators.unwrap_or_else(||vec![]));
+                        }
+                        break;
+                    }
                     return Ok(info);
                 }
                 Err(DatabaseError {
@@ -264,6 +324,7 @@ impl Database {
                             "identity": identity.unwrap_or_else(|| &default_identity),
                             "info": {
                                 "nominators": doc.get_array("nominators").unwrap(),
+                                "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
                                 "era": doc.get("era").unwrap(),
                                 "commission": doc.get("commission").unwrap(),
                                 "apy": doc.get("apy").unwrap(),
@@ -278,6 +339,7 @@ impl Database {
                             "identity": identity.unwrap_or_else(|| &default_identity),
                             "info": {
                                 "nominators": doc.get_array("nominators").unwrap(),
+                                "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
                                 "era": doc.get("era").unwrap(),
                                 "commission": doc.get("commission").unwrap(),
                                 "apy": doc.get("apy").unwrap(),

@@ -184,7 +184,7 @@ pub struct ValidatorNominationTrend {
     id: String,
     status_change: StatusChange,
     identity: Option<Identity>,
-    info: Vec<NominationInfo>,
+    pub info: Vec<NominationInfo>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -217,13 +217,21 @@ pub struct StatusChange {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct NominationInfo {
-    nominators: Vec<Nominator>,
-    era: u32,
+    pub nominators: Option<Vec<Nominator>>,
+    pub nominator_count: u32,
+    pub era: u32,
     exposure: Exposure,
     commission: f32,
     apy: f32,
     unclaimed_eras: Option<Vec<i32>>,
+}
+
+impl NominationInfo {
+    pub fn set_nominators(&mut self, nominators: Vec<Nominator>) {
+        self.nominators = Some(nominators);
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
