@@ -76,31 +76,44 @@ impl Database {
                 "localField": "id",
                 "foreignField": "validator",
                 "as": "info",
-                // "$project": {
-                //     "era": 1,
-                //     "exposure": 1,
-                //     "apy": 1,
-                //     "commission": 1,
-                //     "validator": 1,
-                // }
             },
         };
+        let unwind_command = doc! {
+            "$unwind": {
+                "path": "$info",
+                "includeArrayIndex": "infoIndex",
+                "preserveNullAndEmptyArrays": false
+            }
+        };
+
         let project_command = doc! {
             "$project": {
                 "id": 1,
                 "identity": 1,
                 "statusChange": 1,
                 "rewards": 1,
-                "info.era": 1,
-                "info.exposure": 1,
-                "info.apy": 1,
-                "info.commission": 1,
-                "info.validator": 1,
-                "info.nominatorCount": {"$size": "$info.nominators"},
+                "info": {
+                    "era": 1,
+                    "exposure": 1,
+                    "commission": 1,
+                    "apy": 1,
+                    "validator": 1,
+                    "nominatorCount": {
+                        "$size": "$info.nominators"
+                    }
+                },
             }
         };
-        let unset_command = doc! {
-            "$unset": ["info.nominators"],
+
+        let group_command = doc! {
+            "$group": {
+                "_id": "$_id",
+                "id": { "$first" : "$id" },
+                "identity": { "$first" : "$identity" },
+                "statusChange": { "$first" : "$statusChange" },
+                "rewards": { "$first" : "$rewards" },
+                "info": {"$push": "$info"}
+            }
         };
         // let mut array = Vec::new();
         match self.client.as_ref().ok_or(DatabaseError {
@@ -110,11 +123,12 @@ impl Database {
                 let db = client.database(&self.db_name);
                 let mut cursor = db
                     .collection("validator")
-                    .aggregate(vec![match_command, lookup_command, project_command, unset_command], None)
+                    .aggregate(vec![match_command, lookup_command, unwind_command, project_command, group_command], None)
                     .await
                     .unwrap();
                 while let Some(result) = cursor.next().await {
                     let unwrapped = result.unwrap();
+                    // println!("{:?}", unwrapped);
                     let mut info: types::ValidatorNominationTrend =
                         bson::from_bson(Bson::Document(unwrapped)).unwrap();
                     let mut cursor2 = db
@@ -148,6 +162,7 @@ impl Database {
                                 index = i as i32;
                             }
                         }
+                        println!("{:?}", info);
                         if index >= 0 {
                             info.info[index as usize].set_nominators(info2.nominators.unwrap_or_else(||vec![]));
                         }
