@@ -142,19 +142,29 @@ impl Database {
                     }, doc! {
                         "$limit": 1
                     }, doc! {
+                        "$lookup": {
+                            "from": "nominator",
+                            "localField": "nominators",
+                            "foreignField": "address",
+                            "as": "nominators",
+                        }
+                    }, doc! {
                         "$project": {
                             "era": 1,
                             "exposure": 1,
-                            "apy": 1,
                             "commission": 1,
+                            "apy": 1,
                             "validator": 1,
+                            "nominatorCount": {
+                                "$size": "$nominators"
+                            },
                             "nominators": 1,
-                            "nominatorCount": {"$size": "$nominators"},
                         }
                     }], None)
                     .await
                     .unwrap();
                     while let Some(result2) = cursor2.next().await {
+                        // println!("{:?}", result2);
                         let info2: types::NominationInfo = bson::from_bson(Bson::Document(result2.unwrap())).unwrap();
                         let mut index: i32 = -1;
                         for (i, era_info) in info.info.iter().enumerate() {
@@ -162,7 +172,7 @@ impl Database {
                                 index = i as i32;
                             }
                         }
-                        println!("{:?}", info);
+                        // println!("{:?}", info);
                         if index >= 0 {
                             info.info[index as usize].set_nominators(info2.nominators.unwrap_or_else(||vec![]));
                         }
@@ -246,6 +256,14 @@ impl Database {
                 "as": "unclaimedEraInfo"
             },
         };
+        let lookup_command3 = doc! {
+            "$lookup": {
+                "from": "nominator",
+                "localField": "nominators",
+                "foreignField": "address",
+                "as": "nominators"
+            },
+        };
         let skip_command = doc! {
             "$skip": page * size,
         };
@@ -256,13 +274,14 @@ impl Database {
                 match_command,
                 lookup_command,
                 lookup_command2,
+                lookup_command3,
                 skip_command,
                 limit_command,
             ]).await
     }
 
     pub async fn get_validator_info(&self, stashes: Vec<String>, era: u32) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
-        println!("{:?}", stashes);
+        // println!("{:?}", stashes);
         let mut array = Vec::new();
         let match_command = doc! {
             "$match":{
@@ -290,14 +309,56 @@ impl Database {
                 "as": "unclaimedEraInfo"
             },
         };
-        let skip_command = doc! {
+        let unwind_command = doc! {
+            "$unwind": {
+                "path": "$nominators",
+                "includeArrayIndex": "nominatorIndex",
+                "preserveNullAndEmptyArrays": false
+            }
         };
-        let limit_command = doc! {
+        let lookup_command3 = doc! {
+            "$lookup": {
+                "from": "nominator",
+                "localField": "nominators",
+                "foreignField": "address",
+                "as": "nominators"
+            },
         };
+        let unwind_command2 = doc! {
+            "$unwind": {
+                "path": "$nominators",
+                "includeArrayIndex": "nominatorIndex2",
+                "preserveNullAndEmptyArrays": false
+            }
+        };
+        // let match_command2 = doc! {
+        //     "$match": {
+        //         "$expr": {
+        //             "$eq": ["$nominators.era", "$era"] 
+        //           } 
+        //     }
+        // };
+        let group_command = doc! {
+            "$group": {
+                "_id": "$_id",
+                "era": { "$first" : "$era" },
+                "exposure": { "$first" : "$exposure" },
+                "commission": { "$first" : "$commission" },
+                "apy": { "$first" : "$apy" },
+                "validator": {"$first": "$validator"},
+                "nominators": {"$push": "$nominators"},
+                "data": {"$first": "$data"},
+            }
+        }; 
         self.do_get_validator_info(array, vec! [
             match_command,
             lookup_command,
             lookup_command2,
+            unwind_command,
+            lookup_command3,
+            unwind_command2,
+            // match_command2,
+            group_command,
         ]).await
     }
 
@@ -317,6 +378,7 @@ impl Database {
                     .unwrap();
                 while let Some(result) = cursor.next().await {
                     let doc = result.unwrap();
+                    // println!("{:?}", doc);
                     let _data = &doc.get_array("data").unwrap()[0];
                     let id = _data.as_document().unwrap().get("id");
                     let default_unclaimed_eras = vec![bson! ({
