@@ -1,12 +1,14 @@
 use super::config::Config;
 use super::types;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use futures::StreamExt;
 use mongodb::bson::{self, Bson, Document, bson, doc};
 use mongodb::{options::ClientOptions, Client};
-use std::error::Error;
+use tokio::time;
+use std::{collections::HashMap, error::Error};
 use std::fmt;
 use std::net::Ipv4Addr;
-use types::{StashRewards, ValidatorNominationInfo};
+use types::{ValidatorNominationInfo};
 
 // Define our error types. These may be customized for our error handling cases.
 // Now we will be able to write our own errors, defer to an underlying error
@@ -28,6 +30,7 @@ pub struct Database {
     port: u16,
     db_name: String,
     client: Option<Client>,
+    price_cache: HashMap<i64, f64>,
 }
 
 impl Database {
@@ -37,6 +40,7 @@ impl Database {
             port: port,
             db_name: db_name.to_string(),
             client: None,
+            price_cache: HashMap::new(),
         }
     }
 
@@ -164,7 +168,6 @@ impl Database {
                     .await
                     .unwrap();
                     while let Some(result2) = cursor2.next().await {
-                        // println!("{:?}", result2);
                         let info2: types::NominationInfo = bson::from_bson(Bson::Document(result2.unwrap())).unwrap();
                         let mut index: i32 = -1;
                         for (i, era_info) in info.info.iter().enumerate() {
@@ -172,7 +175,6 @@ impl Database {
                                 index = i as i32;
                             }
                         }
-                        // println!("{:?}", info);
                         if index >= 0 {
                             info.info[index as usize].set_nominators(info2.nominators.unwrap_or_else(||vec![]));
                         }
@@ -462,8 +464,51 @@ impl Database {
         }
     }
 
+    fn get_price_from_cache(&self, timestamp: i64) -> Result<f64, DatabaseError> {
+        if self.price_cache.contains_key(&timestamp) {
+            return Ok(self.price_cache[&timestamp]);
+        }
+        Err(DatabaseError{
+            message: "Cache missed".to_string(),
+        })
+    }
+
+    async fn get_price_of_day(&self, timestamp: i64) -> Result<types::CoinPrice, DatabaseError> {
+        match self.client.as_ref().ok_or(DatabaseError {
+            message: "Mongodb client is not working as expected.".to_string(),
+        }) {
+            Ok(client) => {
+                let db = client.database(&self.db_name);
+                let mut cursor = db
+                    .collection("price")
+                    .find(doc! {"timestamp": timestamp}, None)
+                    .await
+                    .unwrap();
+                while let Some(coin_price) = cursor.next().await {
+                    let doc = coin_price.unwrap();
+                    
+                    let price = doc.get("price").unwrap().as_f64().unwrap_or_else(|| 0.0);
+                    let timestamp = doc.get("timestamp").unwrap().as_i32().unwrap();
+                    let price = types::CoinPrice {
+                        timestamp: timestamp as i64,
+                        price: price,
+                    };
+                    // println!("{:?}", price);
+                    return Ok(price);
+                }
+                Err(DatabaseError {
+                    message: "Cannot get price".to_string(),
+                })
+            }
+            Err(e) => {
+                println!("{}", e);
+                Err(e)
+            }
+        }
+    }
+
     pub async fn get_stash_reward(
-        &self,
+        &mut self,
         stash: String,
     ) -> Result<types::StashRewards, DatabaseError> {
         let _stash = stash.clone();
@@ -487,10 +532,34 @@ impl Database {
                     }
                     let amount = doc.get("amount").unwrap().as_f64().unwrap_or_else(|| 0.0);
                     let timestamp = doc.get("timestamp").unwrap().as_f64().unwrap();
+                    
+                    let naive = NaiveDateTime::from_timestamp((timestamp / 1000.0).round() as i64, 0);
+                    // Create a normal DateTime from the NaiveDateTime
+                    let datetime: DateTime<Utc> = DateTime::from_utc(naive, Utc);
+                    let t = datetime.date().and_hms(0, 0, 0).timestamp();
+                    let result = self.get_price_from_cache(t);
+                    let mut price = 0.0;
+                    match result {
+                        Ok(_price) => {price = _price;},
+                        Err(_) => {
+                            let _price = self.get_price_of_day(t).await;
+                            match _price {
+                                Ok(_price) => {
+                                    price = _price.price;
+                                    println!("{:?}",price);
+                                    self.price_cache.insert(t, price);
+                                },
+                                Err(_) => {},
+                            }
+                        },
+                    }
+                    println!("{:?} {:?}",price, price * amount);
                     era_rewards.push(types::StashEraReward {
                         era: era,
                         amount: amount,
                         timestamp: (timestamp).round() as i64,
+                        price: price,
+                        total: price * amount
                     })
                 }
                 Ok(types::StashRewards {
@@ -504,4 +573,5 @@ impl Database {
             }
         }
     }
+    
 }

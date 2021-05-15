@@ -111,7 +111,7 @@ fn get_1kv_nominators() -> impl Filter<Extract=impl warp::Reply, Error=warp::Rej
 fn get_stash_rewards(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
     warp::path("api").and(warp::path("stash")).and(with_db(db))
     .and(warp::path::param()).and(warp::path("rewards")).and(warp::path::end())
-    .and_then(|db: Database, stash: String| async move {
+    .and_then(|mut db: Database, stash: String| async move {
         let validator = db.get_stash_reward(stash).await;
         match validator {
             Ok(v) => Ok(warp::reply::json(&v)),

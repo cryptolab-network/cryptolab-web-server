@@ -209,6 +209,15 @@ pub struct StashEraReward {
     pub era: i32,
     pub amount: f64,
     pub timestamp: i64,
+    pub price: f64,
+    pub total: f64
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CoinPrice {
+    pub price: f64,
+    pub timestamp: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
