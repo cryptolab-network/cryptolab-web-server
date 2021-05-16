@@ -19,10 +19,10 @@ async fn main() {
         Config::current().db_port, Config::current().kusama_db_name.as_str());
     let result = kusama_db.connect().await;
     match result {
-        Ok(r) => {
+        Ok(_) => {
             let mut polkadot_db = Database::new(Config::current().db_address.parse().unwrap(),
                 Config::current().db_port, Config::current().polkadot_db_name.as_str());
-            polkadot_db.connect().await;
+            let _ = polkadot_db.connect().await;
             let options = WebServerOptions {
                 kusama_db: kusama_db,
                 polkadot_db: polkadot_db,
@@ -31,6 +31,6 @@ async fn main() {
             let server = WebServer::new(Config::current().port, options);
             server.start().await;
         }
-        Err(e) => panic!("Failed to connect to the Kusama Database")
+        Err(_) => panic!("Failed to connect to the Kusama Database")
     }
 }

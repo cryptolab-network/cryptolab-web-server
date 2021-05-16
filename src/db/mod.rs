@@ -4,7 +4,6 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use futures::StreamExt;
 use mongodb::bson::{self, Bson, Document, bson, doc};
 use mongodb::{options::ClientOptions, Client};
-use tokio::time;
 use std::{collections::HashMap, error::Error};
 use std::fmt;
 use std::net::Ipv4Addr;
@@ -236,7 +235,7 @@ impl Database {
         page: u32,
         size: u32,
     ) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
-        let mut array = Vec::new();
+        let array = Vec::new();
         let match_command = doc! {
             "$match":{
                 "era": era
@@ -284,7 +283,7 @@ impl Database {
 
     pub async fn get_validator_info(&self, stashes: Vec<String>, era: u32) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
         // println!("{:?}", stashes);
-        let mut array = Vec::new();
+        let array = Vec::new();
         let match_command = doc! {
             "$match":{
                 "$and": [
@@ -395,7 +394,7 @@ impl Database {
                     let default_identity = bson!({
                         "display": ""
                     });
-                    let mut output = doc! {};
+                    let output: Document;
                     if unclaimed_era_infos.len() == 0 {
                         output = doc! {
                             "id": id.unwrap(),
@@ -525,7 +524,7 @@ impl Database {
                 let mut era_rewards: Vec<types::StashEraReward> = vec![];
                 while let Some(stash_reward) = cursor.next().await {
                     let doc = stash_reward.unwrap();
-                    let mut era = 0;
+                    let era;
                     match doc.get("era").unwrap().as_i32() {
                         Some(_era) => era = _era,
                         None => continue,

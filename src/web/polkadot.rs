@@ -24,7 +24,7 @@ fn get_validator_trend(db: Database) -> impl Filter<Extract=impl warp::Reply, Er
         let validator = db.get_validator(stash).await;
         match validator {
             Ok(v) => Ok(warp::reply::json(&[v])),
-            Err(e) => Err(warp::reject::not_found())
+            Err(_) => Err(warp::reject::not_found())
         }
     })
 }
@@ -36,7 +36,7 @@ fn get_validator_unclaimed_eras(db: Database) -> impl Filter<Extract=impl warp::
         let validator = db.get_validator_unclaimed_eras(stash).await;
         match validator {
             Ok(v) => Ok(warp::reply::json(&v)),
-            Err(e) => Err(warp::reject::not_found())
+            Err(_) => Err(warp::reject::not_found())
         }
     })
 }
@@ -83,10 +83,10 @@ fn get_nominated_validators(db: Database) -> impl Filter<Extract=impl warp::Repl
                         let result = db.get_validator_info(nominator.targets, chain_info.active_era).await;
                         match result {
                             Ok(validators) => Ok(warp::reply::json(&validators)),
-                            Err(e) => Err(warp::reject::not_found())
+                            Err(_) => Err(warp::reject::not_found())
                         }
                     },
-                    Err(e) => Err(warp::reject::not_found())
+                    Err(_) => Err(warp::reject::not_found())
                 }
         })
 }
@@ -98,7 +98,7 @@ fn get_stash_rewards(db: Database) -> impl Filter<Extract=impl warp::Reply, Erro
         let validator = db.get_stash_reward(stash).await;
         match validator {
             Ok(v) => Ok(warp::reply::json(&v)),
-            Err(e) => Err(warp::reject::not_found())
+            Err(_) => Err(warp::reject::not_found())
         }
     })
 }
@@ -121,7 +121,7 @@ pub fn routes(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp:
         .and(with_db(db.clone()))
         .and(warp::query::<HashMap<String, String>>())
         .and_then(|db: Database,p: HashMap<String, String>| async move { match p.get("size") {
-            Some(size) => {
+            Some(_) => {
                 let chain_info = db.get_chain_info().await.unwrap();
                 get_data_from_db(db, chain_info.active_era).await
             },
