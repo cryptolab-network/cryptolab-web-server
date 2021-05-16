@@ -17,6 +17,12 @@ fn get_validators() -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejecti
     path
 }
 
+fn get_1kv_validators() -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
+    let path = warp::path("valid").and(warp::path::end())
+        .map(|| warp::reply::json(&cache::get_1kv_info_detail()));
+    path
+}
+
 fn get_validator_trend(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
     warp::path("validator").and(with_db(db))
     .and(warp::path::param()).and(warp::path("trend")).and(warp::path::end())
@@ -54,7 +60,10 @@ fn get_validator_detail() -> impl Filter<Extract=impl warp::Reply, Error=warp::R
     let path = warp::path("validDetail")
         .and(warp::path::end())
         .and(warp::query().map(|opt: ValidDetailOptions| 
-            if opt.option == "all" {
+            if opt.option == "1kv" {
+                warp::reply::json(&cache::get_1kv_info_simple())
+            }
+            else if opt.option == "all" {
                 warp::reply::json(&cache::get_validators())
             }
             else { 
@@ -70,6 +79,13 @@ fn get_nominators() -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejecti
         .and(warp::path::end()).map(|| warp::reply::json(&cache::get_nominators()));
     path
 }
+
+fn get_1kv_nominators() -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
+    let path = warp::path("1kv").and(warp::path("nominators"))
+        .and(warp::path::end()).map(|| warp::reply::json(&cache::get_1kv_nominators()));
+    path
+}
+
 
 fn get_nominated_validators(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp::Rejection> + Clone {
     warp::path("nominated").and(with_db(db))
@@ -116,6 +132,8 @@ pub fn routes(db: Database) -> impl Filter<Extract=impl warp::Reply, Error=warp:
     .or(get_nominated_validators(db.clone()))
     .or(get_validator_unclaimed_eras(db.clone()))
     .or(get_stash_rewards(db.clone()))
+    .or(get_1kv_validators())
+    .or(get_1kv_nominators())
     .or(
         warp::path("allValidators").and(warp::path::end())
         .and(with_db(db.clone()))
