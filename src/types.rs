@@ -125,8 +125,8 @@ pub struct Others {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Nominator {
-    address: String,
-    balance: Balance
+    pub address: String,
+    pub balance: Option<Balance>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -142,9 +142,9 @@ pub struct NominatorNomination {
 #[serde(rename_all = "camelCase")]
 pub struct Balance {
     #[serde(deserialize_with = "from_hex")]
-    locked_balance: u128,
+    pub(crate) locked_balance: u128,
     #[serde(deserialize_with = "from_hex")]
-    free_balance: u128
+    pub(crate) free_balance: u128
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -174,7 +174,7 @@ pub struct ValidatorNominationInfo {
     id: String,
     status_change: StatusChange,
     identity: Option<Identity>,
-    info: NominationInfo,
+    info: NominationInfoSimple,
     rewards: Option<ValidatorTotalReward>,
 }
 
@@ -235,6 +235,20 @@ pub struct NominationInfo {
     commission: f32,
     apy: f32,
     unclaimed_eras: Option<Vec<i32>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct NominationInfoSimple {
+    pub nominators: Option<Vec<Nominator>>,
+    pub nominator_count: u32,
+    pub era: u32,
+    exposure: Exposure,
+    commission: f32,
+    apy: f32,
+    unclaimed_eras: Option<Vec<i32>>,
+    #[serde(deserialize_with = "from_hex")]
+    total: u128,
 }
 
 impl NominationInfo {
@@ -300,6 +314,27 @@ where
         _ => return Err(de::Error::custom("wrong type"))
     })
 }
+
+
+fn from_hex_optional<'de, D>(deserializer: D) -> Result<Option<u128>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Ok(match Value::deserialize(deserializer)? {
+        Value::String(s) => {
+            let mut result = Ok(0);
+            if s.len() > 3 {
+                result = u128::from_str_radix(&s[2..], 16);
+            }
+            Some(result.map_err(de::Error::custom)?)
+        },
+        Value::Number(num) => {
+            Some(u128::from_str(num.to_string().as_str()).map_err(de::Error::custom)?)
+        },
+        _ => return Err(de::Error::custom("wrong type"))
+    })
+}
+
 
 fn parse_stash_name<'de, D>(d: D) -> Result<String, D::Error> where D: Deserializer<'de> {
     Deserialize::deserialize(d)

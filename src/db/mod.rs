@@ -1,3 +1,5 @@
+use crate::types::Nominator;
+
 use super::config::Config;
 use super::types;
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -7,7 +9,7 @@ use mongodb::{options::ClientOptions, Client};
 use std::{collections::HashMap, error::Error};
 use std::fmt;
 use std::net::Ipv4Addr;
-use types::{ValidatorNominationInfo};
+use types::{ValidatorNominationInfo, Balance};
 
 // Define our error types. These may be customized for our error handling cases.
 // Now we will be able to write our own errors, defer to an underlying error
@@ -275,7 +277,7 @@ impl Database {
                 match_command,
                 lookup_command,
                 lookup_command2,
-                lookup_command3,
+                // lookup_command3,
                 skip_command,
                 limit_command,
             ]).await
@@ -394,6 +396,20 @@ impl Database {
                     let default_identity = bson!({
                         "display": ""
                     });
+                    let nominators = doc.get_array("nominators").unwrap();
+                    let mut _nominators = vec![];
+
+                    for n in nominators {
+                        if let Some(n) = n.as_str() {
+                           _nominators.push(bson!({
+                                "address": n.to_string(),
+                            }));
+                        } else {
+                            _nominators.push(n.clone());
+                        }
+                    }
+
+                    // println!("{:?}", _nominators);
                     let output: Document;
                     if unclaimed_era_infos.len() == 0 {
                         output = doc! {
@@ -401,13 +417,14 @@ impl Database {
                             "statusChange": status_change.unwrap(),
                             "identity": identity.unwrap_or_else(|| &default_identity),
                             "info": {
-                                "nominators": doc.get_array("nominators").unwrap(),
+                                "nominators": _nominators.clone(),
                                 "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
                                 "era": doc.get("era").unwrap(),
                                 "commission": doc.get("commission").unwrap(),
                                 "apy": doc.get("apy").unwrap(),
                                 "exposure": doc.get("exposure").unwrap(),
                                 "unclaimedEras": bson! ([]),
+                                "total": doc.get("total").unwrap_or(&Bson::String("0x00".to_string())),
                             }
                         };
                     } else {
@@ -416,13 +433,14 @@ impl Database {
                             "statusChange": status_change.unwrap(),
                             "identity": identity.unwrap_or_else(|| &default_identity),
                             "info": {
-                                "nominators": doc.get_array("nominators").unwrap(),
+                                "nominators": _nominators.clone(),
                                 "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
                                 "era": doc.get("era").unwrap(),
                                 "commission": doc.get("commission").unwrap(),
                                 "apy": doc.get("apy").unwrap(),
                                 "exposure": doc.get("exposure").unwrap(),
                                 "unclaimedEras": unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap(),
+                                "total": doc.get("total").unwrap_or(&Bson::String("0x00".to_string())),
                             }
                         };
                     }
@@ -552,7 +570,7 @@ impl Database {
                             }
                         },
                     }
-                    println!("{:?} {:?}",price, price * amount);
+                    // println!("{:?} {:?}",price, price * amount);
                     era_rewards.push(types::StashEraReward {
                         era: era,
                         amount: amount,
