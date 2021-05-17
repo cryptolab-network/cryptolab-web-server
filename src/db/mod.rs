@@ -505,13 +505,21 @@ impl Database {
                     let doc = coin_price.unwrap();
                     
                     let price = doc.get("price").unwrap().as_f64().unwrap_or_else(|| 0.0);
-                    let timestamp = doc.get("timestamp").unwrap().as_i32().unwrap();
-                    let price = types::CoinPrice {
-                        timestamp: timestamp as i64,
-                        price: price,
-                    };
-                    // println!("{:?}", price);
-                    return Ok(price);
+                    let timestamp = doc.get("timestamp").unwrap().as_i32().unwrap_or(0);
+                    if timestamp == 0 {
+                        let timestamp = doc.get("timestamp").unwrap().as_i64().unwrap_or(0);
+                        let price = types::CoinPrice {
+                            timestamp: timestamp as i64,
+                            price: price,
+                        };
+                        return Ok(price);
+                    } else {
+                        let price = types::CoinPrice {
+                            timestamp: timestamp as i64,
+                            price: price,
+                        };
+                        return Ok(price);
+                    }
                 }
                 Err(DatabaseError {
                     message: "Cannot get price".to_string(),
