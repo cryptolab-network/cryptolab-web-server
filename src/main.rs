@@ -1,7 +1,7 @@
 mod web;
 mod db;
 mod types;
-mod cache;
+mod cache_redis;
 mod config;
 mod polkadot_cache;
 

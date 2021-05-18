@@ -18,20 +18,20 @@ impl fmt::Display for CacheError {
 }
 
 fn connect() -> Result<redis::Connection, RedisError> {
-    Config::init();
-    let config = Config::current();
-    let client = redis::Client::open(format!("redis://{}:{}/", config.redis, config.redis_port));
-    match client {
-        Ok(client) => {
-          let con = client.get_connection()?;
-          Ok(con)
-        },
-        Err(e) => {Err(e)},
-    }
+  Config::init();
+  let config = Config::current();
+  let client = redis::Client::open(format!("redis://{}:{}/", config.redis, config.redis_port));
+  match client {
+      Ok(client) => {
+        let con = client.get_connection()?;
+        Ok(con)
+      },
+      Err(e) => {Err(e)},
   }
+}
 
 pub fn get_validators() -> Vec<types::ValidatorInfo> {
-  let result: Result<String, RedisError> = connect().unwrap().get("DOTvalidDetailAll");
+  let result: Result<String, RedisError> = connect().unwrap().get("KSMvalidDetailAll");
   match result {
       Ok(data) => {
         let json: Option<types::ValidatorDetailAll> =
@@ -43,21 +43,21 @@ pub fn get_validators() -> Vec<types::ValidatorInfo> {
 }
 
 pub fn get_1kv_info_simple() -> types::ValidatorDetail1kv {
-  let result: Result<String, RedisError> = connect().unwrap().get("DOTonekv");
+  let result: Result<String, RedisError> = connect().unwrap().get("KSMonekv");
   let json: Option<types::ValidatorDetail1kv> =
   serde_json::from_str(result.unwrap().as_str()).expect("JSON was not well-formatted");
   json.unwrap()
 }
 
 pub fn get_1kv_info_detail() -> types::ValidatorDetail1kv {
-  let result: Result<String, RedisError> = connect().unwrap().get("DOTonekv");
+  let result: Result<String, RedisError> = connect().unwrap().get("KSMonekv");
   let json: Option<types::ValidatorDetail1kv> =
   serde_json::from_str(result.unwrap().as_str()).expect("JSON was not well-formatted");
   json.unwrap()
 }
 
 pub fn get_nominators() -> Vec<types::NominatorNomination> {
-  let result: Result<String, RedisError> = connect().unwrap().get("DOTnominators");
+  let result: Result<String, RedisError> = connect().unwrap().get("KSMnominators");
   match result {
       Ok(data) => {
         let json: Option<Vec<types::NominatorNomination>> =
@@ -81,7 +81,7 @@ pub fn get_nominator(stash: String) -> Result<types::NominatorNomination, CacheE
 }
 
 pub fn get_1kv_nominators() -> types::OneKvNominators {
-  let result: Result<String, RedisError> = connect().unwrap().get("DOTonekvNominators");
+  let result: Result<String, RedisError> = connect().unwrap().get("KSMonekvNominators");
   let json: Option<types::OneKvNominators> =
   serde_json::from_str(result.unwrap().as_str()).expect("JSON was not well-formatted");
   json.unwrap()

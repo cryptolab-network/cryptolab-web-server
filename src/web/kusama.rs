@@ -2,7 +2,7 @@ use std::{collections::HashMap, convert::Infallible};
 use warp::Filter;
 use warp::http::{StatusCode};
 use serde::Deserialize;
-use super::super::cache;
+use super::super::cache_redis as cache;
 use super::super::db::Database;
 
 #[derive(Deserialize)]
