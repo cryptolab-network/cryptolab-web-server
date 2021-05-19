@@ -55,6 +55,7 @@ pub struct ValidatorInfo1kv {
     active_nominators: u32,
     total_nominators: u32,
     staking_info: Option<StakingInfo>,
+    nominated_at: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
