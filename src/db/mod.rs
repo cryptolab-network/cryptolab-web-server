@@ -1,5 +1,3 @@
-use crate::types::Nominator;
-
 use super::config::Config;
 use super::types;
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -9,7 +7,7 @@ use mongodb::{options::ClientOptions, Client};
 use std::{collections::HashMap, error::Error};
 use std::fmt;
 use std::net::Ipv4Addr;
-use types::{ValidatorNominationInfo, Balance};
+use types::{ValidatorNominationInfo};
 
 // Define our error types. These may be customized for our error handling cases.
 // Now we will be able to write our own errors, defer to an underlying error
@@ -69,10 +67,9 @@ impl Database {
         &self,
         stash: String,
     ) -> Result<types::ValidatorNominationTrend, DatabaseError> {
-        let cloned_stash = stash.clone();
         let match_command = doc! {
             "$match":{
-                "id": stash.clone()
+                "id": &stash
             },
         };
         let lookup_command = doc! {
@@ -140,7 +137,7 @@ impl Database {
                     .collection("nomination")
                     .aggregate(vec![doc! {
                         "$match":{
-                            "validator": stash.clone()
+                            "validator": &stash
                         },
                     }, doc! {
                         "$sort": {"era": -1}
@@ -184,7 +181,7 @@ impl Database {
                     return Ok(info);
                 }
                 Err(DatabaseError {
-                    message: format!("Failed to find validator with stash {}", cloned_stash),
+                    message: format!("Failed to find validator with stash {}", &stash),
                 })
             }
             Err(e) => {
@@ -259,14 +256,14 @@ impl Database {
                 "as": "unclaimedEraInfo"
             },
         };
-        let lookup_command3 = doc! {
-            "$lookup": {
-                "from": "nominator",
-                "localField": "nominators",
-                "foreignField": "address",
-                "as": "nominators"
-            },
-        };
+        // let lookup_command3 = doc! {
+        //     "$lookup": {
+        //         "from": "nominator",
+        //         "localField": "nominators",
+        //         "foreignField": "address",
+        //         "as": "nominators"
+        //     },
+        // };
         let skip_command = doc! {
             "$skip": page * size,
         };
@@ -408,8 +405,6 @@ impl Database {
                             _nominators.push(n.clone());
                         }
                     }
-
-                    // println!("{:?}", _nominators);
                     let output: Document;
                     if unclaimed_era_infos.len() == 0 {
                         output = doc! {
@@ -417,7 +412,7 @@ impl Database {
                             "statusChange": status_change.unwrap(),
                             "identity": identity.unwrap_or_else(|| &default_identity),
                             "info": {
-                                "nominators": _nominators.clone(),
+                                "nominators": &_nominators,
                                 "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
                                 "era": doc.get("era").unwrap(),
                                 "commission": doc.get("commission").unwrap(),
@@ -433,7 +428,7 @@ impl Database {
                             "statusChange": status_change.unwrap(),
                             "identity": identity.unwrap_or_else(|| &default_identity),
                             "info": {
-                                "nominators": _nominators.clone(),
+                                "nominators": &_nominators,
                                 "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
                                 "era": doc.get("era").unwrap(),
                                 "commission": doc.get("commission").unwrap(),
@@ -447,7 +442,7 @@ impl Database {
                     // println!("{:?}", output);
                     let info: ValidatorNominationInfo =
                         bson::from_bson(Bson::Document(output)).unwrap();
-                    array.push(info.clone());
+                    array.push(info);
                     // println!("{:?}", unclaimed_era_info.as_document().unwrap().get_array("eras").unwrap());
                     // println!("{:?}", info);
                 }
@@ -466,13 +461,19 @@ impl Database {
         }) {
             Ok(client) => {
                 let db = client.database(&self.db_name);
-                let cursor = db
-                    .collection("chainInfo")
-                    .find_one(None, None)
-                    .await
-                    .unwrap();
-                let data = bson::from_bson(Bson::Document(cursor.unwrap())).unwrap();
-                Ok(data)
+                match db
+                .collection("chainInfo")
+                .find_one(None, None)
+                .await {
+                    Ok(cursor) => {
+                        Ok(bson::from_bson(Bson::Document(cursor.unwrap())).unwrap())
+                    },
+                    Err(_) => {
+                        Err(DatabaseError {
+                            message: "Get data from DB failed".to_string()
+                        })
+                    },
+                }
             }
             Err(e) => {
                 println!("{}", e);

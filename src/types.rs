@@ -1,4 +1,3 @@
-use std::fmt::Display;
 use std::str::FromStr;
 use serde_json::Value;
 use serde::{Serialize, Deserialize, Deserializer};
@@ -288,14 +287,14 @@ pub struct OneKvNominated {
     elected: bool,
 }
 
-fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
-    where T: FromStr,
-          T::Err: Display,
-          D: Deserializer<'de>
-{
-    let s = String::deserialize(deserializer)?;
-    T::from_str(&s).map_err(de::Error::custom)
-}
+// fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
+//     where T: FromStr,
+//           T::Err: Display,
+//           D: Deserializer<'de>
+// {
+//     let s = String::deserialize(deserializer)?;
+//     T::from_str(&s).map_err(de::Error::custom)
+// }
 
 fn from_hex<'de, D>(deserializer: D) -> Result<u128, D::Error>
 where
@@ -315,27 +314,6 @@ where
         _ => return Err(de::Error::custom("wrong type"))
     })
 }
-
-
-fn from_hex_optional<'de, D>(deserializer: D) -> Result<Option<u128>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    Ok(match Value::deserialize(deserializer)? {
-        Value::String(s) => {
-            let mut result = Ok(0);
-            if s.len() > 3 {
-                result = u128::from_str_radix(&s[2..], 16);
-            }
-            Some(result.map_err(de::Error::custom)?)
-        },
-        Value::Number(num) => {
-            Some(u128::from_str(num.to_string().as_str()).map_err(de::Error::custom)?)
-        },
-        _ => return Err(de::Error::custom("wrong type"))
-    })
-}
-
 
 fn parse_stash_name<'de, D>(d: D) -> Result<String, D::Error> where D: Deserializer<'de> {
     Deserialize::deserialize(d)
