@@ -1,6 +1,6 @@
-use std::{fmt, fs, path::{Path}};
-use super::types;
 use super::config::Config;
+use super::types;
+use std::{fmt, fs, path::Path};
 
 #[derive(Debug, Clone)]
 pub struct CacheError {
@@ -20,7 +20,7 @@ pub fn get_validators() -> Vec<types::ValidatorInfo> {
     let path = Path::new(folder).join("validDetailAll.json");
     let data = fs::read_to_string(path).expect("Unable to read the cache file");
     let json: Option<types::ValidatorDetailAll> =
-    serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
+        serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
 
     json.unwrap().valid
 }
@@ -32,8 +32,8 @@ pub fn get_1kv_info_simple() -> types::ValidatorDetail1kv {
     let path = Path::new(folder).join("onekv.json");
     let data = fs::read_to_string(path).expect("Unable to read the cache file");
     let json: Option<types::ValidatorDetail1kv> =
-    serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
-    
+        serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
+
     json.unwrap()
 }
 
@@ -44,7 +44,7 @@ pub fn get_1kv_info_detail() -> types::ValidatorDetail1kv {
     let path = Path::new(folder).join("onekv.json");
     let data = fs::read_to_string(path).expect("Unable to read the cache file");
     let json: Option<types::ValidatorDetail1kv> =
-    serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
+        serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
     // form StakingInfo
     // element.commission = detail.stakingInfo.validatorPrefs.commission;
     //           element.stakeSize = detail.stakingInfo.stakingLedger.total;
@@ -58,8 +58,8 @@ pub fn get_nominators() -> Vec<types::NominatorNomination> {
     let path = Path::new(folder).join("nominators.json");
     let data = fs::read_to_string(path).expect("Unable to read the cache file");
     let json: Option<Vec<types::NominatorNomination>> =
-    serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
-    
+        serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
+
     json.unwrap()
 }
 
@@ -67,7 +67,7 @@ pub fn get_nominator(stash: String) -> Result<types::NominatorNomination, CacheE
     let nominators = get_nominators();
     for nominator in nominators {
         if nominator.account_id == stash {
-            return Ok(nominator)
+            return Ok(nominator);
         }
     }
     Err(CacheError {
@@ -82,7 +82,7 @@ pub fn get_1kv_nominators() -> types::OneKvNominators {
     let path = Path::new(folder).join("onekvNominators.json");
     let data = fs::read_to_string(path).expect("Unable to read the cache file");
     let json: Option<types::OneKvNominators> =
-    serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
-    
+        serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
+
     json.unwrap()
 }

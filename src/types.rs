@@ -1,7 +1,7 @@
-use std::str::FromStr;
-use serde_json::Value;
-use serde::{Serialize, Deserialize, Deserializer};
 use serde::de;
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
+use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -23,7 +23,7 @@ pub struct ValidatorDetail1kv {
     pub validator_count: Option<u32>,
     pub elected_count: Option<u32>,
     pub election_rate: Option<f32>,
-    pub valid: Vec<ValidatorInfo1kv>
+    pub valid: Vec<ValidatorInfo1kv>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -33,13 +33,13 @@ pub struct Validator1kvSimple {
     pub validator_count: Option<u32>,
     pub elected_count: Option<u32>,
     pub election_rate: Option<f32>,
-    pub valid: Vec<ValidatorInfo1kvSimple>
+    pub valid: Vec<ValidatorInfo1kvSimple>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ValidatorDetailAll {
-    pub valid: Vec<ValidatorInfo>
+    pub valid: Vec<ValidatorInfo>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -113,7 +113,7 @@ pub struct Exposure {
     total: u128,
     #[serde(deserialize_with = "from_hex")]
     own: u128,
-    others: Vec<Others>
+    others: Vec<Others>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -126,7 +126,7 @@ pub struct Others {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Nominator {
     pub address: String,
-    pub balance: Option<Balance>
+    pub balance: Option<Balance>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -144,7 +144,7 @@ pub struct Balance {
     #[serde(deserialize_with = "from_hex")]
     pub(crate) locked_balance: u128,
     #[serde(deserialize_with = "from_hex")]
-    pub(crate) free_balance: u128
+    pub(crate) free_balance: u128,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -154,18 +154,18 @@ pub struct StakingLedger {
     #[serde(deserialize_with = "from_hex")]
     total: u128,
     #[serde(deserialize_with = "from_hex")]
-    active: u128
+    active: u128,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ValidatorPrefs {
     commission: u64,
-    blocked: bool
+    blocked: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Identity {
-    display: Option<String>
+    display: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -200,7 +200,7 @@ pub struct ValidatorTotalReward {
 pub struct StashRewards {
     #[serde(alias = "id")]
     pub stash: String,
-    pub era_rewards: Vec<StashEraReward>
+    pub era_rewards: Vec<StashEraReward>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -210,7 +210,7 @@ pub struct StashEraReward {
     pub amount: f64,
     pub timestamp: i64,
     pub price: f64,
-    pub total: f64
+    pub total: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -281,9 +281,9 @@ pub struct OneKvNominator {
 #[serde(rename_all = "camelCase")]
 pub struct OneKvNominated {
     stash: String,
-    #[serde(deserialize_with="parse_stash_name")]
+    #[serde(deserialize_with = "parse_stash_name")]
     name: String,
-    #[serde(deserialize_with="parse_elected")]
+    #[serde(deserialize_with = "parse_elected")]
     elected: bool,
 }
 
@@ -307,24 +307,24 @@ where
                 result = u128::from_str_radix(&s[2..], 16);
             }
             result.map_err(de::Error::custom)?
-        },
+        }
         Value::Number(num) => {
             u128::from_str(num.to_string().as_str()).map_err(de::Error::custom)?
-        },
-        _ => return Err(de::Error::custom("wrong type"))
+        }
+        _ => return Err(de::Error::custom("wrong type")),
     })
 }
 
-fn parse_stash_name<'de, D>(d: D) -> Result<String, D::Error> where D: Deserializer<'de> {
-    Deserialize::deserialize(d)
-        .map(|x: Option<_>| {
-            x.unwrap_or("N/A".to_string())
-        })
+fn parse_stash_name<'de, D>(d: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Deserialize::deserialize(d).map(|x: Option<_>| x.unwrap_or("N/A".to_string()))
 }
 
-fn parse_elected<'de, D>(d: D) -> Result<bool, D::Error> where D: Deserializer<'de> {
-    Deserialize::deserialize(d)
-        .map(|x: Option<_>| {
-            x.unwrap_or(false)
-        })
+fn parse_elected<'de, D>(d: D) -> Result<bool, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    Deserialize::deserialize(d).map(|x: Option<_>| x.unwrap_or(false))
 }

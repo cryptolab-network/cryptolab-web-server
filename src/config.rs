@@ -1,8 +1,8 @@
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::fs::File;
 use std::io::BufReader;
 use std::sync::{Arc, RwLock};
-use serde::{Serialize, Deserialize};
 #[derive(Serialize, Deserialize, Debug, Default)]
 pub struct Config {
     pub db_address: String,
@@ -36,9 +36,7 @@ thread_local! {
     static CURRENT_CONFIG: RwLock<Arc<Config>> = RwLock::new(Default::default());
 }
 
-
 fn read_config(path: String) -> Result<Config, Box<dyn Error>> {
-    
     let file = File::open(path);
     match file {
         Ok(file) => {
@@ -46,6 +44,6 @@ fn read_config(path: String) -> Result<Config, Box<dyn Error>> {
             let config: Config = serde_json::from_reader(reader)?;
             Ok(config)
         }
-        Err(e) => Err(Box::new(e))
+        Err(e) => Err(Box::new(e)),
     }
 }
