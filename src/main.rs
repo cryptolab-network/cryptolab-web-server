@@ -1,7 +1,6 @@
 mod cache;
 mod config;
 mod db;
-mod polkadot_cache;
 mod types;
 mod web;
 

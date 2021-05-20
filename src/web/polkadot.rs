@@ -4,7 +4,7 @@ use warp::http::StatusCode;
 use warp::Filter;
 
 use super::super::db::Database;
-use super::super::polkadot_cache as cache;
+use super::super::cache;
 
 #[derive(Deserialize)]
 struct ValidDetailOptions {
@@ -14,7 +14,7 @@ struct ValidDetailOptions {
 fn get_validators() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let path = warp::path("validators")
         .and(warp::path::end())
-        .map(|| warp::reply::json(&cache::get_validators()));
+        .map(|| warp::reply::json(&cache::get_validators("DOT")));
     path
 }
 
@@ -22,7 +22,7 @@ fn get_1kv_validators() -> impl Filter<Extract = impl warp::Reply, Error = warp:
 {
     let path = warp::path("valid")
         .and(warp::path::end())
-        .map(|| warp::reply::json(&cache::get_1kv_info_detail()));
+        .map(|| warp::reply::json(&cache::get_1kv_info_detail("DOT")));
     path
 }
 
@@ -83,11 +83,11 @@ fn get_validator_detail() -> impl Filter<Extract = impl warp::Reply, Error = war
         .and(warp::path::end())
         .and(warp::query().map(|opt: ValidDetailOptions| {
             if opt.option == "1kv" {
-                warp::reply::json(&cache::get_1kv_info_simple())
+                warp::reply::json(&cache::get_1kv_info_simple("DOT"))
             } else if opt.option == "all" {
-                warp::reply::json(&cache::get_validators())
+                warp::reply::json(&cache::get_validators("DOT"))
             } else {
-                warp::reply::json(&cache::get_validators())
+                warp::reply::json(&cache::get_validators("DOT"))
             }
         }));
     path
@@ -96,7 +96,7 @@ fn get_validator_detail() -> impl Filter<Extract = impl warp::Reply, Error = war
 fn get_nominators() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let path = warp::path("nominators")
         .and(warp::path::end())
-        .map(|| warp::reply::json(&cache::get_nominators()));
+        .map(|| warp::reply::json(&cache::get_nominators("DOT")));
     path
 }
 
@@ -105,7 +105,7 @@ fn get_1kv_nominators() -> impl Filter<Extract = impl warp::Reply, Error = warp:
     let path = warp::path("1kv")
         .and(warp::path("nominators"))
         .and(warp::path::end())
-        .map(|| warp::reply::json(&cache::get_1kv_nominators()));
+        .map(|| warp::reply::json(&cache::get_1kv_nominators("DOT")));
     path
 }
 
@@ -118,7 +118,7 @@ fn get_nominated_validators(
         .and(warp::path::param())
         .and(warp::path::end())
         .and_then(|db: Database, stash: String| async move {
-            let result = cache::get_nominator(stash);
+            let result = cache::get_nominator("DOT", stash);
             match result {
                 Ok(nominator) => {
                     let chain_info = db.get_chain_info().await.unwrap();
