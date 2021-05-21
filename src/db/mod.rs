@@ -1,15 +1,13 @@
-use crate::types::Nominator;
-
 use super::config::Config;
 use super::types;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use futures::StreamExt;
-use mongodb::bson::{self, Bson, Document, bson, doc};
+use mongodb::bson::{self, bson, doc, Bson, Document};
 use mongodb::{options::ClientOptions, Client};
-use std::{collections::HashMap, error::Error};
 use std::fmt;
 use std::net::Ipv4Addr;
-use types::{ValidatorNominationInfo, Balance};
+use std::{collections::HashMap, error::Error};
+use types::ValidatorNominationInfo;
 
 // Define our error types. These may be customized for our error handling cases.
 // Now we will be able to write our own errors, defer to an underlying error
@@ -69,10 +67,9 @@ impl Database {
         &self,
         stash: String,
     ) -> Result<types::ValidatorNominationTrend, DatabaseError> {
-        let cloned_stash = stash.clone();
         let match_command = doc! {
             "$match":{
-                "id": stash.clone()
+                "id": &stash
             },
         };
         let lookup_command = doc! {
@@ -128,7 +125,16 @@ impl Database {
                 let db = client.database(&self.db_name);
                 let mut cursor = db
                     .collection("validator")
-                    .aggregate(vec![match_command, lookup_command, unwind_command, project_command, group_command], None)
+                    .aggregate(
+                        vec![
+                            match_command,
+                            lookup_command,
+                            unwind_command,
+                            project_command,
+                            group_command,
+                        ],
+                        None,
+                    )
                     .await
                     .unwrap();
                 while let Some(result) = cursor.next().await {
@@ -137,39 +143,49 @@ impl Database {
                     let mut info: types::ValidatorNominationTrend =
                         bson::from_bson(Bson::Document(unwrapped)).unwrap();
                     let mut cursor2 = db
-                    .collection("nomination")
-                    .aggregate(vec![doc! {
-                        "$match":{
-                            "validator": stash.clone()
-                        },
-                    }, doc! {
-                        "$sort": {"era": -1}
-                    }, doc! {
-                        "$limit": 1
-                    }, doc! {
-                        "$lookup": {
-                            "from": "nominator",
-                            "localField": "nominators",
-                            "foreignField": "address",
-                            "as": "nominators",
-                        }
-                    }, doc! {
-                        "$project": {
-                            "era": 1,
-                            "exposure": 1,
-                            "commission": 1,
-                            "apy": 1,
-                            "validator": 1,
-                            "nominatorCount": {
-                                "$size": "$nominators"
-                            },
-                            "nominators": 1,
-                        }
-                    }], None)
-                    .await
-                    .unwrap();
+                        .collection("nomination")
+                        .aggregate(
+                            vec![
+                                doc! {
+                                    "$match":{
+                                        "validator": &stash
+                                    },
+                                },
+                                doc! {
+                                    "$sort": {"era": -1}
+                                },
+                                doc! {
+                                    "$limit": 1
+                                },
+                                doc! {
+                                    "$lookup": {
+                                        "from": "nominator",
+                                        "localField": "nominators",
+                                        "foreignField": "address",
+                                        "as": "nominators",
+                                    }
+                                },
+                                doc! {
+                                    "$project": {
+                                        "era": 1,
+                                        "exposure": 1,
+                                        "commission": 1,
+                                        "apy": 1,
+                                        "validator": 1,
+                                        "nominatorCount": {
+                                            "$size": "$nominators"
+                                        },
+                                        "nominators": 1,
+                                    }
+                                },
+                            ],
+                            None,
+                        )
+                        .await
+                        .unwrap();
                     while let Some(result2) = cursor2.next().await {
-                        let info2: types::NominationInfo = bson::from_bson(Bson::Document(result2.unwrap())).unwrap();
+                        let info2: types::NominationInfo =
+                            bson::from_bson(Bson::Document(result2.unwrap())).unwrap();
                         let mut index: i32 = -1;
                         for (i, era_info) in info.info.iter().enumerate() {
                             if era_info.era == info2.era {
@@ -177,14 +193,15 @@ impl Database {
                             }
                         }
                         if index >= 0 {
-                            info.info[index as usize].set_nominators(info2.nominators.unwrap_or_else(||vec![]));
+                            info.info[index as usize]
+                                .set_nominators(info2.nominators.unwrap_or_else(|| vec![]));
                         }
                         break;
                     }
                     return Ok(info);
                 }
                 Err(DatabaseError {
-                    message: format!("Failed to find validator with stash {}", cloned_stash),
+                    message: format!("Failed to find validator with stash {}", &stash),
                 })
             }
             Err(e) => {
@@ -259,31 +276,39 @@ impl Database {
                 "as": "unclaimedEraInfo"
             },
         };
-        let lookup_command3 = doc! {
-            "$lookup": {
-                "from": "nominator",
-                "localField": "nominators",
-                "foreignField": "address",
-                "as": "nominators"
-            },
-        };
+        // let lookup_command3 = doc! {
+        //     "$lookup": {
+        //         "from": "nominator",
+        //         "localField": "nominators",
+        //         "foreignField": "address",
+        //         "as": "nominators"
+        //     },
+        // };
         let skip_command = doc! {
             "$skip": page * size,
         };
         let limit_command = doc! {
             "$limit": size,
         };
-        self.do_get_validator_info(array,  vec![
+        self.do_get_validator_info(
+            array,
+            vec![
                 match_command,
                 lookup_command,
                 lookup_command2,
                 // lookup_command3,
                 skip_command,
                 limit_command,
-            ]).await
+            ],
+        )
+        .await
     }
 
-    pub async fn get_validator_info(&self, stashes: Vec<String>, era: u32) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
+    pub async fn get_validator_info(
+        &self,
+        stashes: &Vec<String>,
+        era: &u32,
+    ) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
         // println!("{:?}", stashes);
         let array = Vec::new();
         let match_command = doc! {
@@ -337,8 +362,8 @@ impl Database {
         // let match_command2 = doc! {
         //     "$match": {
         //         "$expr": {
-        //             "$eq": ["$nominators.era", "$era"] 
-        //           } 
+        //             "$eq": ["$nominators.era", "$era"]
+        //           }
         //     }
         // };
         let group_command = doc! {
@@ -352,21 +377,28 @@ impl Database {
                 "nominators": {"$push": "$nominators"},
                 "data": {"$first": "$data"},
             }
-        }; 
-        self.do_get_validator_info(array, vec! [
-            match_command,
-            lookup_command,
-            lookup_command2,
-            unwind_command,
-            lookup_command3,
-            unwind_command2,
-            // match_command2,
-            group_command,
-        ]).await
+        };
+        self.do_get_validator_info(
+            array,
+            vec![
+                match_command,
+                lookup_command,
+                lookup_command2,
+                unwind_command,
+                lookup_command3,
+                unwind_command2,
+                // match_command2,
+                group_command,
+            ],
+        )
+        .await
     }
 
-    async fn do_get_validator_info(&self, mut array: Vec<ValidatorNominationInfo>, pipeline: Vec<Document> ) 
-        -> Result<Vec<ValidatorNominationInfo>, DatabaseError> {
+    async fn do_get_validator_info(
+        &self,
+        mut array: Vec<ValidatorNominationInfo>,
+        pipeline: Vec<Document>,
+    ) -> Result<Vec<ValidatorNominationInfo>, DatabaseError> {
         match self.client.as_ref().ok_or(DatabaseError {
             message: "Mongodb client is not working as expected.".to_string(),
         }) {
@@ -374,9 +406,7 @@ impl Database {
                 let db = client.database(&self.db_name);
                 let mut cursor = db
                     .collection("nomination")
-                    .aggregate( pipeline,
-                        None,
-                    )
+                    .aggregate(pipeline, None)
                     .await
                     .unwrap();
                 while let Some(result) = cursor.next().await {
@@ -401,15 +431,13 @@ impl Database {
 
                     for n in nominators {
                         if let Some(n) = n.as_str() {
-                           _nominators.push(bson!({
+                            _nominators.push(bson!({
                                 "address": n.to_string(),
                             }));
                         } else {
                             _nominators.push(n.clone());
                         }
                     }
-
-                    // println!("{:?}", _nominators);
                     let output: Document;
                     if unclaimed_era_infos.len() == 0 {
                         output = doc! {
@@ -417,7 +445,7 @@ impl Database {
                             "statusChange": status_change.unwrap(),
                             "identity": identity.unwrap_or_else(|| &default_identity),
                             "info": {
-                                "nominators": _nominators.clone(),
+                                "nominators": &_nominators,
                                 "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
                                 "era": doc.get("era").unwrap(),
                                 "commission": doc.get("commission").unwrap(),
@@ -433,7 +461,7 @@ impl Database {
                             "statusChange": status_change.unwrap(),
                             "identity": identity.unwrap_or_else(|| &default_identity),
                             "info": {
-                                "nominators": _nominators.clone(),
+                                "nominators": &_nominators,
                                 "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
                                 "era": doc.get("era").unwrap(),
                                 "commission": doc.get("commission").unwrap(),
@@ -447,7 +475,7 @@ impl Database {
                     // println!("{:?}", output);
                     let info: ValidatorNominationInfo =
                         bson::from_bson(Bson::Document(output)).unwrap();
-                    array.push(info.clone());
+                    array.push(info);
                     // println!("{:?}", unclaimed_era_info.as_document().unwrap().get_array("eras").unwrap());
                     // println!("{:?}", info);
                 }
@@ -466,13 +494,12 @@ impl Database {
         }) {
             Ok(client) => {
                 let db = client.database(&self.db_name);
-                let cursor = db
-                    .collection("chainInfo")
-                    .find_one(None, None)
-                    .await
-                    .unwrap();
-                let data = bson::from_bson(Bson::Document(cursor.unwrap())).unwrap();
-                Ok(data)
+                match db.collection("chainInfo").find_one(None, None).await {
+                    Ok(cursor) => Ok(bson::from_bson(Bson::Document(cursor.unwrap())).unwrap()),
+                    Err(_) => Err(DatabaseError {
+                        message: "Get data from DB failed".to_string(),
+                    }),
+                }
             }
             Err(e) => {
                 println!("{}", e);
@@ -485,7 +512,7 @@ impl Database {
         if self.price_cache.contains_key(&timestamp) {
             return Ok(self.price_cache[&timestamp]);
         }
-        Err(DatabaseError{
+        Err(DatabaseError {
             message: "Cache missed".to_string(),
         })
     }
@@ -503,7 +530,7 @@ impl Database {
                     .unwrap();
                 while let Some(coin_price) = cursor.next().await {
                     let doc = coin_price.unwrap();
-                    
+
                     let price = doc.get("price").unwrap().as_f64().unwrap_or_else(|| 0.0);
                     let timestamp = doc.get("timestamp").unwrap().as_i32().unwrap_or(0);
                     if timestamp == 0 {
@@ -534,7 +561,7 @@ impl Database {
 
     pub async fn get_stash_reward(
         &mut self,
-        stash: String,
+        stash: &String,
     ) -> Result<types::StashRewards, DatabaseError> {
         let _stash = stash.clone();
         match self.client.as_ref().ok_or(DatabaseError {
@@ -557,26 +584,29 @@ impl Database {
                     }
                     let amount = doc.get("amount").unwrap().as_f64().unwrap_or_else(|| 0.0);
                     let timestamp = doc.get("timestamp").unwrap().as_f64().unwrap();
-                    
-                    let naive = NaiveDateTime::from_timestamp((timestamp / 1000.0).round() as i64, 0);
+
+                    let naive =
+                        NaiveDateTime::from_timestamp((timestamp / 1000.0).round() as i64, 0);
                     // Create a normal DateTime from the NaiveDateTime
                     let datetime: DateTime<Utc> = DateTime::from_utc(naive, Utc);
                     let t = datetime.date().and_hms(0, 0, 0).timestamp();
                     let result = self.get_price_from_cache(t);
                     let mut price = 0.0;
                     match result {
-                        Ok(_price) => {price = _price;},
+                        Ok(_price) => {
+                            price = _price;
+                        }
                         Err(_) => {
                             let _price = self.get_price_of_day(t).await;
                             match _price {
                                 Ok(_price) => {
                                     price = _price.price;
-                                    println!("{:?}",price);
+                                    // println!("{:?}", price);
                                     self.price_cache.insert(t, price);
-                                },
-                                Err(_) => {},
+                                }
+                                Err(_) => {}
                             }
-                        },
+                        }
                     }
                     // println!("{:?} {:?}",price, price * amount);
                     era_rewards.push(types::StashEraReward {
@@ -584,11 +614,11 @@ impl Database {
                         amount: amount,
                         timestamp: (timestamp).round() as i64,
                         price: price,
-                        total: price * amount
+                        total: price * amount,
                     })
                 }
                 Ok(types::StashRewards {
-                    stash: stash,
+                    stash: stash.to_string(),
                     era_rewards: era_rewards,
                 })
             }
@@ -598,5 +628,4 @@ impl Database {
             }
         }
     }
-    
 }
