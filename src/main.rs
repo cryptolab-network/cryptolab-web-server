@@ -3,7 +3,6 @@ mod config;
 mod db;
 mod types;
 mod cache_redis;
-mod config;
 mod polkadot_cache;
 mod web;
 
