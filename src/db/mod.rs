@@ -601,7 +601,7 @@ impl Database {
                             match _price {
                                 Ok(_price) => {
                                     price = _price.price;
-                                    println!("{:?}", price);
+                                    // println!("{:?}", price);
                                     self.price_cache.insert(t, price);
                                 }
                                 Err(_) => {}
