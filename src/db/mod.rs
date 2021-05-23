@@ -4,6 +4,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use futures::StreamExt;
 use mongodb::bson::{self, bson, doc, Bson, Document};
 use mongodb::{options::ClientOptions, Client};
+use tokio::time;
 use std::fmt;
 use std::net::Ipv4Addr;
 use std::{collections::HashMap, error::Error};
@@ -583,10 +584,22 @@ impl Database {
                         None => continue,
                     }
                     let amount = doc.get("amount").unwrap().as_f64().unwrap_or_else(|| 0.0);
-                    let timestamp = doc.get("timestamp").unwrap().as_i64().unwrap();
-
-                    let naive =
-                        NaiveDateTime::from_timestamp((timestamp / 1000) as i64, 0);
+                    let _timestamp = doc.get("timestamp").unwrap().as_i64();
+                    let timestamp: i64;
+                    let naive: NaiveDateTime;
+                    match _timestamp {
+                        Some(__timestamp) => {
+                            naive =
+                            NaiveDateTime::from_timestamp((__timestamp / 1000) as i64, 0);
+                            timestamp = __timestamp;
+                        },
+                        None => {
+                            let  timestamp_f64 = doc.get("timestamp").unwrap().as_f64().unwrap();
+                            naive =
+                            NaiveDateTime::from_timestamp((timestamp_f64.round() / 1000.0) as i64, 0);
+                            timestamp = timestamp_f64.round() as i64;
+                        },
+                    }
                     // Create a normal DateTime from the NaiveDateTime
                     let datetime: DateTime<Utc> = DateTime::from_utc(naive, Utc);
                     let t = datetime.date().and_hms(0, 0, 0).timestamp();
