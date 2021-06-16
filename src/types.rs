@@ -24,6 +24,7 @@ pub struct ValidatorDetail1kv {
     pub elected_count: Option<u32>,
     pub election_rate: Option<f32>,
     pub valid: Vec<ValidatorInfo1kv>,
+    pub modified_time: Option<u64>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
