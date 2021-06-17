@@ -1,6 +1,6 @@
 use super::config::Config;
 use super::types;
-use std::{fmt, fs, path::Path};
+use std::{fmt, fs, path::Path, time::UNIX_EPOCH};
 
 #[derive(Debug, Clone)]
 pub struct CacheError {
@@ -43,13 +43,20 @@ pub fn get_1kv_info_simple(chain: &str) -> types::ValidatorDetail1kv {
 
 pub fn get_1kv_info_detail(chain: &str) -> types::ValidatorDetail1kv {
     let path = Path::new(get_folder(chain).as_str()).join("onekv.json");
-    let data = fs::read_to_string(path).expect("Unable to read the cache file");
-    let json: Option<types::ValidatorDetail1kv> =
+    let data = fs::read_to_string(path.clone()).expect("Unable to read the cache file");
+    let metadata = fs::metadata(path.clone());
+    let json_option: Option<types::ValidatorDetail1kv> =
         serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
-    // form StakingInfo
-    // element.commission = detail.stakingInfo.validatorPrefs.commission;
-    //           element.stakeSize = detail.stakingInfo.stakingLedger.total;
-    json.unwrap()
+    let mut json = json_option.unwrap();
+    if let Ok(metadata) = metadata {
+        if let Ok(modified_time) = metadata.modified() {
+            let timestamp = modified_time
+            .duration_since(UNIX_EPOCH)
+            .expect("Time went backwards").as_secs();
+            json.modified_time = Some(timestamp);
+        }
+    }
+    json
 }
 
 pub fn get_nominators(chain: &str) -> Vec<types::NominatorNomination> {
@@ -57,8 +64,7 @@ pub fn get_nominators(chain: &str) -> Vec<types::NominatorNomination> {
     let data = fs::read_to_string(path).expect("Unable to read the cache file");
     let json: Option<Vec<types::NominatorNomination>> =
         serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
-
-    json.unwrap()
+        json.unwrap()
 }
 
 pub fn get_nominator(chain: &str, stash: String) -> Result<types::NominatorNomination, CacheError> {
