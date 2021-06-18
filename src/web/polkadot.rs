@@ -11,11 +11,31 @@ struct ValidDetailOptions {
     option: String,
 }
 
+#[derive(Deserialize)]
+struct AllValidatorOptions {
+    size: Option<u32>,
+    page: Option<u32>
+}
+
 fn get_validators() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     let path = warp::path("validators")
         .and(warp::path::end())
         .map(|| warp::reply::json(&cache::get_validators("DOT")));
     path
+}
+
+fn get_all_validators_formal(db: Database) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path("api")
+    .and(warp::path("v1"))
+    .and(warp::path("validators"))
+    .and(warp::path("DOT"))
+    .and(warp::path::end())
+    .and(with_db(db.clone()))
+    .and(warp::query::<AllValidatorOptions>())
+    .and_then(|db: Database, p: AllValidatorOptions| async move {
+        let chain_info = db.get_chain_info().await.unwrap();
+        get_data_from_db(db, chain_info.active_era, p.size, p.page).await
+    })
 }
 
 fn get_1kv_validators() -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
@@ -69,8 +89,10 @@ fn with_db(
 async fn get_data_from_db(
     db: Database,
     era: u32,
+    size: Option<u32>,
+    page: Option<u32>,
 ) -> Result<warp::reply::WithStatus<warp::reply::Json>, Infallible> {
-    let result = db.get_all_validator_info_of_era(era, 0, 2000).await;
+    let result = db.get_all_validator_info_of_era(era, page.unwrap_or(0), size.unwrap_or(1500)).await;
     Ok(warp::reply::with_status(
         warp::reply::json(&result.unwrap()),
         StatusCode::OK,
@@ -163,6 +185,7 @@ async fn handle_query_parameter_err(
 pub fn routes(
     db: Database,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    let routes_v2 = get_all_validators_formal(db.clone());
     let routes = warp::get()
         .and(warp::path("api"))
         .and(warp::path("dot"))
@@ -184,11 +207,11 @@ pub fn routes(
                         match p.get("size") {
                             Some(_) => {
                                 let chain_info = db.get_chain_info().await.unwrap();
-                                get_data_from_db(db, chain_info.active_era).await
+                                get_data_from_db(db, chain_info.active_era, None, None).await
                             }
                             None => handle_query_parameter_err().await,
                         }
                     })),
         );
-    routes
+    routes.or(routes_v2)
 }

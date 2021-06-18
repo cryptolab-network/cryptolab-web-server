@@ -424,6 +424,8 @@ impl Database {
                         .unwrap_or(&default_unclaimed_eras);
                     let status_change = _data.as_document().unwrap().get("statusChange");
                     let identity = _data.as_document().unwrap().get("identity");
+                    let staker_points = _data.as_document().unwrap().get("stakerPoints");
+                    let average_apy = _data.as_document().unwrap().get("averageApy");
                     let default_identity = bson!({
                         "display": ""
                     });
@@ -454,7 +456,9 @@ impl Database {
                                 "exposure": doc.get("exposure").unwrap(),
                                 "unclaimedEras": bson! ([]),
                                 "total": doc.get("total").unwrap_or(&Bson::String("0x00".to_string())),
-                            }
+                            },
+                            "stakerPoints": staker_points.unwrap(),
+                            "averageApy": average_apy.unwrap_or(&Bson::Int32(0)),
                         };
                     } else {
                         output = doc! {
@@ -470,7 +474,9 @@ impl Database {
                                 "exposure": doc.get("exposure").unwrap(),
                                 "unclaimedEras": unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap(),
                                 "total": doc.get("total").unwrap_or(&Bson::String("0x00".to_string())),
-                            }
+                            },
+                            "stakerPoints": staker_points.unwrap(),
+                            "averageApy": average_apy.unwrap_or(&Bson::Int32(0)),
                         };
                     }
                     // println!("{:?}", output);

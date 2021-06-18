@@ -177,6 +177,8 @@ pub struct ValidatorNominationInfo {
     identity: Option<Identity>,
     info: NominationInfoSimple,
     rewards: Option<ValidatorTotalReward>,
+    staker_points: Option<Vec<StakerPoint>>,
+    average_apy: Option<f32>
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -186,6 +188,13 @@ pub struct ValidatorNominationTrend {
     status_change: StatusChange,
     identity: Option<Identity>,
     pub info: Vec<NominationInfo>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StakerPoint {
+    era: u32,
+    points: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
