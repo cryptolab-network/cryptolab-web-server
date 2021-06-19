@@ -254,11 +254,14 @@ impl Database {
         era: u32,
         page: u32,
         size: u32,
+        apy_min: f32,
+        apy_max: f32,
     ) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
         let array = Vec::new();
         let match_command = doc! {
             "$match":{
-                "era": era
+                "era": era,
+                "apy": {"$lte": apy_max, "$gte": apy_min},
             },
         };
         let lookup_command = doc! {

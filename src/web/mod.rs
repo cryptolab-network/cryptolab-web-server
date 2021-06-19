@@ -2,6 +2,9 @@ use super::db::Database;
 use warp::Filter;
 mod kusama;
 mod polkadot;
+mod cryptolabApi;
+mod params;
+use params::InvalidParam;
 use super::config::Config;
 use std::convert::Infallible;
 use warp::http::StatusCode;
@@ -32,12 +35,19 @@ impl WebServer {
     ) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
         let routes = kusama::routes(self.kusama_db.clone())
             .or(polkadot::routes(self.polkadot_db.clone()))
+            .or(cryptolabApi::routes("KSM", self.kusama_db.clone()))
+            .or(cryptolabApi::routes("DOT", self.polkadot_db.clone()))
             .recover(|error: Rejection| async move {
                 // Do prettier error reporting for the default error here.
                 if error.is_not_found() {
                     Ok(warp::reply::with_status(
                         String::from("Data not found"),
                         StatusCode::NOT_FOUND,
+                    ))
+                } else if let Some(InvalidParam) = error.find() {
+                    Ok(warp::reply::with_status(
+                        String::from("Invalid Parameters"),
+                        StatusCode::BAD_REQUEST,
                     ))
                 } else {
                     Ok(warp::reply::with_status(
