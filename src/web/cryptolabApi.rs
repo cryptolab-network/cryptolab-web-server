@@ -17,6 +17,16 @@ fn validate_get_all_validators() -> impl Filter<Extract = (AllValidatorOptions,)
         return Err(warp::reject::custom(InvalidParam));
       }
     }
+    if let Some(commission_min) = params.commission_min {
+      if commission_min < 0.0 || commission_min > 100.0 {
+        return Err(warp::reject::custom(InvalidParam));
+      }
+    }
+    if let Some(commission_max) = params.commission_max {
+      if commission_max < 0.0 || commission_max > 100.0 {
+        return Err(warp::reject::custom(InvalidParam));
+      }
+    }
     Ok(params)
   })
 }
@@ -31,7 +41,7 @@ fn get_all_validators(chain: &'static str, db: Database) -> impl Filter<Extract 
     .and(validate_get_all_validators())
     .and_then(|db: Database, p: AllValidatorOptions| async move {
         let chain_info = db.get_chain_info().await.unwrap();
-        get_data_from_db(db, chain_info.active_era, p.size, p.page, p.apy_min, p.apy_max).await
+        get_data_from_db(db, chain_info.active_era, p.size, p.page, p.apy_min, p.apy_max, p.commission_min, p.commission_max).await
     })
 }
 
@@ -48,9 +58,12 @@ async fn get_data_from_db(
     page: Option<u32>,
     apy_min: Option<f32>,
     apy_max: Option<f32>,
+    commission_min: Option<f32>,
+    commission_max: Option<f32>,
 ) -> Result<warp::reply::WithStatus<warp::reply::Json>, Infallible> {
     let result = db.get_all_validator_info_of_era(era, page.unwrap_or(0),
-     size.unwrap_or(4000), apy_min.unwrap_or(0.0), apy_max.unwrap_or(100.0)).await;
+     size.unwrap_or(4000), apy_min.unwrap_or(0.0), apy_max.unwrap_or(1.0),
+          commission_min.unwrap_or(0.0), commission_max.unwrap_or(1.0)).await;
     Ok(warp::reply::with_status(
         warp::reply::json(&result.unwrap()),
         StatusCode::OK,

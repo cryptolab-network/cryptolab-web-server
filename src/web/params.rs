@@ -17,4 +17,6 @@ pub struct AllValidatorOptions {
     pub page: Option<u32>,
     pub apy_min: Option<f32>,
     pub apy_max: Option<f32>,
+    pub commission_min: Option<f32>,
+    pub commission_max: Option<f32>,
 }

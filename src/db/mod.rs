@@ -256,12 +256,15 @@ impl Database {
         size: u32,
         apy_min: f32,
         apy_max: f32,
+        commission_min: f32,
+        commission_max: f32,
     ) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
         let array = Vec::new();
         let match_command = doc! {
             "$match":{
                 "era": era,
                 "apy": {"$lte": apy_max, "$gte": apy_min},
+                "commission": {"$lte": commission_max * 100.0, "$gte": commission_min * 100.0},
             },
         };
         let lookup_command = doc! {
