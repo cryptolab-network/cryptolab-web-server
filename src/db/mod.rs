@@ -95,6 +95,8 @@ impl Database {
                 "identity": 1,
                 "statusChange": 1,
                 "rewards": 1,
+                "averageApy": 1,
+                "stakerPoints": 1,
                 "info": {
                     "era": 1,
                     "exposure": 1,
@@ -115,6 +117,8 @@ impl Database {
                 "identity": { "$first" : "$identity" },
                 "statusChange": { "$first" : "$statusChange" },
                 "rewards": { "$first" : "$rewards" },
+                "averageApy": { "$first" : "$averageApy" },
+                "stakerPoints": { "$first" : "$stakerPoints" },
                 "info": {"$push": "$info"}
             }
         };

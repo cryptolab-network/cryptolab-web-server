@@ -187,6 +187,8 @@ pub struct ValidatorNominationTrend {
     id: String,
     status_change: StatusChange,
     identity: Option<Identity>,
+    average_apy: Option<f32>,
+    staker_points: Option<Vec<StakerPoint>>,
     pub info: Vec<NominationInfo>,
 }
 
