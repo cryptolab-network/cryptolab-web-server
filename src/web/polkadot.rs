@@ -1,13 +1,17 @@
 use serde::Deserialize;
+use warp::reject::Reject;
 use std::{collections::HashMap, convert::Infallible};
 use warp::http::StatusCode;
 use warp::Filter;
 use crate::config::Config;
+use crate::staking_rewards_collector::SRCError;
 
 use super::super::staking_rewards_collector::{StakingRewardsCollector, StakingRewardsAddress};
 
 use super::super::db::Database;
 use super::super::cache;
+
+impl Reject for SRCError {}
 
 #[derive(Deserialize)]
 struct ValidDetailOptions {
@@ -182,18 +186,9 @@ fn get_stash_rewards_collector(src_path: String) -> impl Filter<Extract = impl w
             let start = "2020-01-01".to_string();
             let end = chrono::Utc::now().format("%Y-%m-%d").to_string();
             let currency = "USD".to_string();
-            let src = StakingRewardsCollector {
-                start: p.start.unwrap_or(start),
-                end: p.end.unwrap_or(end),
-                currency: p.currency.unwrap_or(currency),
-                price_data: p.price_data.unwrap_or(true).to_string(),
-                addresses: vec![StakingRewardsAddress {
-                    name: "".to_string(),
-                    address: stash.clone(),
-                    start_balance: p.start_balance.unwrap_or(0.0),
-                }],
-                export_output: true.to_string(),
-            };
+            let src = StakingRewardsCollector::new(p.start.unwrap_or(start), p.end.unwrap_or(end),
+            p.currency.unwrap_or(currency), p.price_data.unwrap_or(true),
+            vec![StakingRewardsAddress::new("".to_string(), stash.clone(), p.start_balance.unwrap_or(0.0))]);
             let result = src.call_exe(src_path.to_string());
             match result {
                 Ok(v) => {
@@ -201,7 +196,11 @@ fn get_stash_rewards_collector(src_path: String) -> impl Filter<Extract = impl w
                 },
                 Err(err) => {
                     println!("{}", err);
-                    Err(warp::reject::not_found())
+                    if err.err_code == -2 {
+                        Err(warp::reject::not_found())
+                    } else {
+                        Err(warp::reject::custom(err))
+                    }
                 },
             }
         })
