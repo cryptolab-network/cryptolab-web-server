@@ -1,8 +1,11 @@
+#[macro_use]
+extern crate lazy_static;
 mod cache;
 mod config;
 mod db;
 mod types;
 mod web;
+mod staking_rewards_collector;
 
 use config::Config;
 use db::Database;

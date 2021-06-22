@@ -255,6 +255,7 @@ dependencies = [
  "chrono",
  "env_logger",
  "futures",
+ "lazy_static",
  "log",
  "mongodb",
  "serde",
