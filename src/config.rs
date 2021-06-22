@@ -17,6 +17,8 @@ pub struct Config {
 
     pub new_cache_folder: String,
     pub new_cache_folder_polkadot: String,
+
+    pub staking_rewards_collector_dir: String,
 }
 
 impl Config {
