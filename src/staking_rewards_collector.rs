@@ -1,6 +1,6 @@
 use std::{fmt, fs::{File}, process::{Command, Output}, sync::{Arc, Mutex}};
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Serialize, Deserialize};
 
 use crate::types::{StashEraReward, StashRewards};
@@ -12,6 +12,7 @@ lazy_static! {
 #[derive(Debug, Clone)]
 pub struct SRCError {
     message: String,
+    pub err_code: i32,
 }
 
 impl fmt::Display for SRCError {
@@ -98,14 +99,14 @@ impl StakingRewardsAddress {
 
 impl StakingRewardsCollector {
   pub fn new(
-    start: DateTime::<Utc>,
-    end: DateTime::<Utc>,
+    start: String,
+    end: String,
     currency: String,
     price_data: bool,
     addresses: Vec<StakingRewardsAddress>) -> Self {
     StakingRewardsCollector {
-      start: start.format("%Y-%m-%d").to_string(),
-      end: end.format("%Y-%m-%d").to_string(),
+      start: start,
+      end: end,
       currency: currency,
       price_data: price_data.to_string(),
       addresses: addresses,
@@ -125,36 +126,57 @@ impl StakingRewardsCollector {
         // println!("{:?}", output);
         let result = std::str::from_utf8(&output.stdout);
         // parse response
-        if let Ok(_) = result {
+        if let Ok(output) = result {
+          if output.starts_with("No rewards found to parse") {
+            return Err(SRCError {
+              message: "No rewards are found".to_string(),
+              err_code: -2,
+            });
+          }
           let path = exe_dir.clone() + "\\ " + &self.addresses[0].address + ".json";
           // println!("{}", path);
-          let response = serde_json::from_reader(&File::open(path.clone()).unwrap());
-          if let Ok(response) = response {
-            *mutex += 1;
-            Ok(self.make_response(&response))
+          let response_file = File::open(path.clone());
+          if let Ok(response_file) = response_file {
+            let response: Result<SRCResult, serde_json::Error> = serde_json::from_reader(&response_file);
+            if let Ok(mut r) = response {
+              r.data.list.reverse();
+              *mutex += 1;
+              Ok(self.make_response(&r))
+            } else {
+              *mutex += 1;
+              // println!("---{:?}", response);
+              Err(SRCError {
+                message: "failed to parse response to SRCResult".to_string(),
+                err_code: -9,
+              })
+            }
           } else {
             *mutex += 1;
-            // println!("---{:?}", response);
-            Err(SRCError {
-              message: "failed to parse response to SRCResult".to_string(),
-            })
+              // println!("---{:?}", response);
+              Err(SRCError {
+                message: "failed to parse response to SRCResult".to_string(),
+                err_code: -9,
+              })
           }
         } else {
           *mutex += 1;
           Err(SRCError {
             message: "staking rewards collector returned fail".to_string(),
+            err_code: -10,
           })
         }
       } else {
         *mutex += 1;
         Err(SRCError {
           message: "failed to write input json to file".to_string(),
+          err_code: -11,
         })
       }
     } else {
       *mutex += 1;
       return Err(SRCError {
         message: "failed to create userInput.json".to_string(),
+        err_code: -12,
       });
     }
   }
@@ -179,14 +201,14 @@ impl StakingRewardsCollector {
 
   fn make_response(&self, src_result: &SRCResult) -> StashRewards {
     let mut era_rewards: Vec<StashEraReward> = vec![];
-    let mut drop_zero = true;
+    let first_date = NaiveDateTime::parse_from_str(&(src_result.first_reward.clone() + " 00:00:00"), "%d-%m-%Y %H:%M:%S").unwrap();
+    let last_date = NaiveDateTime::parse_from_str(&(src_result.last_reward.clone() + " 00:00:00"), "%d-%m-%Y %H:%M:%S").unwrap();
+
     for daily_rewards in src_result.data.list.iter().clone() {
-      if drop_zero {
-        if daily_rewards.amount_human_readable == 0.0 {
-          continue;
-        }
+      let date = chrono::NaiveDateTime::parse_from_str(&(daily_rewards.day.clone() + " 00:00:00"), "%d-%m-%Y %H:%M:%S").unwrap();
+      if date < first_date || date > last_date {
+        continue;
       }
-      drop_zero = false;
       let date_str = daily_rewards.day.clone() + " 00:00:00";
       era_rewards.push(StashEraReward {
         era: 0,
