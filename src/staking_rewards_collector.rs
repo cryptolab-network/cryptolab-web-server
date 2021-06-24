@@ -1,4 +1,4 @@
-use std::{fmt, fs::{File}, process::{Command, Output}, sync::{Arc, Mutex}};
+use std::{fmt, fs::{self, File}, path::PathBuf, process::{Command, Output}, sync::{Arc, Mutex}};
 
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Serialize, Deserialize};
@@ -82,6 +82,38 @@ pub struct StakingRewardsAddress {
   pub name: String,
   pub address: String,
   pub start_balance: f64,
+}
+
+pub struct StakingRewardsReport {
+  pub stash: String,
+  pub format: String,
+
+  pub exe_dir: String,
+}
+
+impl StakingRewardsReport {
+  pub fn new(exe_dir: String, stash: String, format: String) -> Self {
+    StakingRewardsReport {
+      exe_dir: exe_dir,
+      stash: stash,
+      format: format,
+    }
+  }
+
+  pub fn get_report(&self) -> Result<String, SRCError> {
+    let mut path = PathBuf::new();
+    path.push(self.exe_dir.clone());
+    path.push(" ".to_string() + &self.stash + "." + &self.format);
+    let response_file = File::open(path.clone());
+    if let Ok(_) = response_file {
+      Ok(fs::read_to_string(path).unwrap())
+    } else {
+      return Err(SRCError {
+        message: "Reward report is not found".to_string(),
+        err_code: -20,
+      });
+    }
+  }
 }
 
 impl StakingRewardsAddress {

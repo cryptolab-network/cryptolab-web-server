@@ -5,6 +5,7 @@ use warp::http::StatusCode;
 use warp::Filter;
 use crate::config::Config;
 use crate::staking_rewards_collector::SRCError;
+use crate::staking_rewards_collector::StakingRewardsReport;
 
 use super::super::staking_rewards_collector::{StakingRewardsCollector, StakingRewardsAddress};
 
@@ -12,13 +13,16 @@ use super::super::db::Database;
 use super::super::cache;
 
 impl Reject for SRCError {}
+#[derive(Debug)]
+struct Invalid;
+impl Reject for Invalid {}
 
 #[derive(Deserialize)]
 struct ValidDetailOptions {
     option: String,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct StakingRewardsOptions {
     pub start: Option<String>,
     pub end: Option<String>,
@@ -183,6 +187,7 @@ fn get_stash_rewards_collector(src_path: String) -> impl Filter<Extract = impl w
         .and(warp::path::end())
         .and(warp::query::<StakingRewardsOptions>())
         .and_then(|stash: String, src_path: String, p: StakingRewardsOptions| async move {
+            println!("{:?}", p);
             let start = "2020-01-01".to_string();
             let end = chrono::Utc::now().format("%Y-%m-%d").to_string();
             let currency = "USD".to_string();
@@ -203,6 +208,66 @@ fn get_stash_rewards_collector(src_path: String) -> impl Filter<Extract = impl w
                     }
                 },
             }
+        })
+}
+
+fn get_stash_rewards_collector_csv(src_path: String) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path("stash")
+        .and(warp::path::param())
+        .and(with_string(src_path))
+        .and(warp::path("rewards"))
+        .and(warp::path("collector"))
+        .and(warp::path("csv"))
+        .and(warp::path::end())
+        .and_then(|stash: String, src_path: String| async move{
+            // validate stash
+            if !stash.chars().all(char::is_alphanumeric) {
+                println!("{}", stash);
+                Err(warp::reject::custom(Invalid))
+            } else {
+                // get file from src path
+                let srr = StakingRewardsReport::new(src_path, stash, "csv".to_string());
+                let file = srr.get_report();
+                match file {
+                    Ok(data) => {
+                        Ok(data)
+                    },
+                    Err(err) => {
+                        Err(warp::reject::custom(err))
+                    },
+                }
+            }
+            
+        })
+}
+
+fn get_stash_rewards_collector_json(src_path: String) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path("stash")
+        .and(warp::path::param())
+        .and(with_string(src_path))
+        .and(warp::path("rewards"))
+        .and(warp::path("collector"))
+        .and(warp::path("json"))
+        .and(warp::path::end())
+        .and_then(|stash: String, src_path: String| async move{
+            // validate stash
+            if !stash.chars().all(char::is_alphanumeric) {
+                println!("{}", stash);
+                Err(warp::reject::custom(Invalid))
+            } else {
+                // get file from src path
+                let srr = StakingRewardsReport::new(src_path, stash, "json".to_string());
+                let file = srr.get_report();
+                match file {
+                    Ok(data) => {
+                        Ok(data)
+                    },
+                    Err(err) => {
+                        Err(warp::reject::custom(err))
+                    },
+                }
+            }
+            
         })
 }
 
@@ -229,6 +294,8 @@ pub fn routes(
                 .or(get_validator_unclaimed_eras(db.clone()))
                 .or(get_stash_rewards(db.clone()))
                 .or(get_stash_rewards_collector(Config::current().staking_rewards_collector_dir.to_string()))
+                .or(get_stash_rewards_collector_csv(Config::current().staking_rewards_collector_dir.to_string()))
+                .or(get_stash_rewards_collector_json(Config::current().staking_rewards_collector_dir.to_string()))
                 .or(get_1kv_validators())
                 .or(get_1kv_nominators())
                 .or(warp::path("allValidators")
