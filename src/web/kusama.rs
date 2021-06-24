@@ -290,10 +290,8 @@ async fn handle_query_parameter_err(
 pub fn routes(
     db: Database,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    let hello_world = warp::path::end().map(|| "Hello, World at root Kusama!");
-    let routes = warp::get().and(hello_world);
-    let routes = routes
-        .or(get_validators())
+    let routes = 
+        get_validators()
         .or(get_validator_detail())
         .or(get_validator_trend(db.clone()))
         .or(get_1kv_validators())
