@@ -70,12 +70,13 @@ impl WebServer {
                 "Content-Type",
             ])
             .allow_methods(&[warp::http::Method::GET, warp::http::Method::OPTIONS]);
-
-        let routes = self
+        let routes = warp::fs::dir("./www/static");
+    
+        let routes2 = self
             .initialize_routes()
             .with(cors)
             .with(warp::compression::gzip())
             .with(warp::log("warp_request"));
-        warp::serve(routes).run(([127, 0, 0, 1], self.port)).await;
+        warp::serve(routes.or(routes2)).run(([127, 0, 0, 1], self.port)).await;
     }
 }

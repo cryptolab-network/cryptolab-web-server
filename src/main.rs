@@ -11,7 +11,7 @@ use config::Config;
 use db::Database;
 use env_logger;
 use web::{WebServer, WebServerOptions};
-use std::{env, net::Ipv4Addr, str::FromStr};
+use std::{env};
 
 #[tokio::main]
 async fn main() {
