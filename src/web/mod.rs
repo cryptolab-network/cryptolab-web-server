@@ -73,12 +73,21 @@ impl WebServer {
         let routes = warp::fs::dir("./www/static");
         let tool_routes = warp::path("tools").and(warp::fs::dir("./www/static"));
         let validator_status_routes = warp::path("tools").and(warp::path("validatorStatus")).and(warp::fs::dir("./www/static"));
-    
-        let routes2 = self
+        let ksmvn_routes = warp::path("tools").and(warp::path("ksmVN")).and(warp::fs::dir("./www/static"));
+        let dotvn_routes = warp::path("tools").and(warp::path("dotVN")).and(warp::fs::dir("./www/static"));
+        let dotsr_routes = warp::path("tools").and(warp::path("dotSR")).and(warp::fs::dir("./www/static"));
+        let onekv_routes = warp::path("tools").and(warp::path("oneKValidators")).and(warp::fs::dir("./www/static"));
+        let onekv_dot_routes = warp::path("tools").and(warp::path("oneKValidatorsDot")).and(warp::fs::dir("./www/static"));
+        let contact_routes = warp::path("contact").and(warp::fs::dir("./www/static"));
+
+        let api_routes = self
             .initialize_routes()
             .with(cors)
             .with(warp::compression::gzip())
             .with(warp::log("warp_request"));
-        warp::serve(routes2.or(routes).or(tool_routes).or(validator_status_routes)).run(([0, 0, 0, 0], self.port)).await;
+        warp::serve(api_routes.or(routes).or(tool_routes).or(validator_status_routes)
+        .or(ksmvn_routes).or(dotvn_routes).or(dotsr_routes)
+        .or(onekv_routes).or(onekv_dot_routes).or(contact_routes)
+        ).run(([0, 0, 0, 0], self.port)).await;
     }
 }
