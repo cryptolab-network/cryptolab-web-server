@@ -1,11 +1,19 @@
+use crate::staking_rewards_collector::SRCError;
+
 use super::db::Database;
 use warp::Filter;
+use warp::reject::Reject;
 mod kusama;
 mod polkadot;
 use super::config::Config;
 use std::convert::Infallible;
 use warp::http::StatusCode;
 use warp::Rejection;
+
+impl Reject for SRCError {}
+#[derive(Debug)]
+struct Invalid;
+impl Reject for Invalid {}
 
 pub struct WebServerOptions {
     pub kusama_db: Database,

@@ -1,21 +1,15 @@
 use serde::Deserialize;
-use warp::reject::Reject;
 use std::{collections::HashMap, convert::Infallible};
 use warp::http::StatusCode;
 use warp::Filter;
 use crate::config::Config;
-use crate::staking_rewards_collector::SRCError;
 use crate::staking_rewards_collector::StakingRewardsReport;
+use crate::web::Invalid;
 
 use super::super::staking_rewards_collector::{StakingRewardsCollector, StakingRewardsAddress};
 
 use super::super::db::Database;
 use super::super::cache;
-
-impl Reject for SRCError {}
-#[derive(Debug)]
-struct Invalid;
-impl Reject for Invalid {}
 
 #[derive(Deserialize)]
 struct ValidDetailOptions {
