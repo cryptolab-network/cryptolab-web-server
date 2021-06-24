@@ -23,7 +23,7 @@ async fn main() {
     let mongo_ip = mongo_ip.unwrap_or(Config::current().db_address.parse().unwrap());
     println!("{}", mongo_ip);
     let mut kusama_db = Database::new(
-        Ipv4Addr::from_str(&mongo_ip.clone()).unwrap(),
+        mongo_ip.clone(),
         Config::current().db_port,
         Config::current().kusama_db_name.as_str(),
     );
@@ -31,7 +31,7 @@ async fn main() {
     match result {
         Ok(_) => {
             let mut polkadot_db = Database::new(
-                Ipv4Addr::from_str(&mongo_ip.clone()).unwrap(),
+                mongo_ip.clone(),
                 Config::current().db_port,
                 Config::current().polkadot_db_name.as_str(),
             );

@@ -4,9 +4,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use futures::StreamExt;
 use mongodb::bson::{self, bson, doc, Bson, Document};
 use mongodb::{options::ClientOptions, Client};
-use tokio::time;
 use std::fmt;
-use std::net::Ipv4Addr;
 use std::{collections::HashMap, error::Error};
 use types::ValidatorNominationInfo;
 
@@ -26,7 +24,7 @@ impl fmt::Display for DatabaseError {
 
 #[derive(Debug, Clone)]
 pub struct Database {
-    ip: Ipv4Addr,
+    ip: String,
     port: u16,
     db_name: String,
     client: Option<Client>,
@@ -34,7 +32,7 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(ip: Ipv4Addr, port: u16, db_name: &str) -> Self {
+    pub fn new(ip: String, port: u16, db_name: &str) -> Self {
         Database {
             ip: ip,
             port: port,
