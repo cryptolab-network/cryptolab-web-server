@@ -37,23 +37,23 @@ impl WebServer {
 
     fn initialize_routes(
         &self,
-    ) -> impl Filter<Extract = impl warp::Reply, Error = Infallible> + Clone {
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         let routes = kusama::routes(self.kusama_db.clone())
-            .or(polkadot::routes(self.polkadot_db.clone()))
-            .recover(|error: Rejection| async move {
-                // Do prettier error reporting for the default error here.
-                if error.is_not_found() {
-                    Ok(warp::reply::with_status(
-                        String::from("Data not found"),
-                        StatusCode::NOT_FOUND,
-                    ))
-                } else {
-                    Ok(warp::reply::with_status(
-                        String::from("Internal error"),
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                    ))
-                }
-            });
+            .or(polkadot::routes(self.polkadot_db.clone()));
+            // .recover(|error: Rejection| async move {
+            //     // Do prettier error reporting for the default error here.
+            //     if error.is_not_found() {
+            //         Ok(warp::reply::with_status(
+            //             String::from("Data not found"),
+            //             StatusCode::NOT_FOUND,
+            //         ))
+            //     } else {
+            //         Ok(warp::reply::with_status(
+            //             String::from("Internal error"),
+            //             StatusCode::INTERNAL_SERVER_ERROR,
+            //         ))
+            //     }
+            // });
         routes
     }
 
@@ -71,12 +71,14 @@ impl WebServer {
             ])
             .allow_methods(&[warp::http::Method::GET, warp::http::Method::OPTIONS]);
         let routes = warp::fs::dir("./www/static");
+        let tool_routes = warp::path("tools").and(warp::fs::dir("./www/static"));
+        let validator_status_routes = warp::path("tools").and(warp::path("validatorStatus")).and(warp::fs::dir("./www/static"));
     
         let routes2 = self
             .initialize_routes()
             .with(cors)
             .with(warp::compression::gzip())
             .with(warp::log("warp_request"));
-        warp::serve(routes.or(routes2)).run(([127, 0, 0, 1], self.port)).await;
+        warp::serve(routes2.or(routes).or(tool_routes).or(validator_status_routes)).run(([0, 0, 0, 0], self.port)).await;
     }
 }
