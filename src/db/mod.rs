@@ -573,6 +573,7 @@ impl Database {
                     .find(doc! {"stash": _stash}, None)
                     .await
                     .unwrap();
+                let mut total_in_fiat = 0.0;
                 let mut era_rewards: Vec<types::StashEraReward> = vec![];
                 while let Some(stash_reward) = cursor.next().await {
                     let doc = stash_reward.unwrap();
@@ -619,6 +620,7 @@ impl Database {
                             }
                         }
                     }
+                    total_in_fiat += price * amount;
                     // println!("{:?} {:?}",price, price * amount);
                     era_rewards.push(types::StashEraReward {
                         era: era,
@@ -631,6 +633,7 @@ impl Database {
                 Ok(types::StashRewards {
                     stash: stash.to_string(),
                     era_rewards: era_rewards,
+                    total_in_fiat
                 })
             }
             Err(e) => {

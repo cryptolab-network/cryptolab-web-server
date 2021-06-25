@@ -171,7 +171,7 @@ impl StakingRewardsCollector {
           if let Ok(response_file) = response_file {
             let response: Result<SRCResult, serde_json::Error> = serde_json::from_reader(&response_file);
             if let Ok(mut r) = response {
-              r.data.list.reverse();
+              r.data.list.reverse(); // make new data on top
               *mutex += 1;
               Ok(self.make_response(&r))
             } else {
@@ -235,7 +235,7 @@ impl StakingRewardsCollector {
     let mut era_rewards: Vec<StashEraReward> = vec![];
     let first_date = NaiveDateTime::parse_from_str(&(src_result.first_reward.clone() + " 00:00:00"), "%d-%m-%Y %H:%M:%S").unwrap();
     let last_date = NaiveDateTime::parse_from_str(&(src_result.last_reward.clone() + " 00:00:00"), "%d-%m-%Y %H:%M:%S").unwrap();
-
+    let mut total_in_fiat = 0.0;
     for daily_rewards in src_result.data.list.iter().clone() {
       let date = chrono::NaiveDateTime::parse_from_str(&(daily_rewards.day.clone() + " 00:00:00"), "%d-%m-%Y %H:%M:%S").unwrap();
       if date < first_date || date > last_date {
@@ -250,11 +250,13 @@ impl StakingRewardsCollector {
         price: daily_rewards.price,
         total: daily_rewards.value_fiat,
       });
+      total_in_fiat += daily_rewards.value_fiat;
     }
 
     StashRewards {
       stash: src_result.address.to_string(),
       era_rewards: era_rewards,
+      total_in_fiat: total_in_fiat,
     }
   }
 }
