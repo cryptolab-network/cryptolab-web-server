@@ -10,7 +10,7 @@ pub struct Config {
     pub kusama_db_name: String,
     pub polkadot_db_name: String,
     pub port: u16,
-    pub cors_url: String,
+    pub cors_url: Vec<String>,
     pub db_has_credential: bool,
     pub db_username: Option<String>,
     pub db_password: Option<String>,

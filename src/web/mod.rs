@@ -55,8 +55,10 @@ impl WebServer {
     }
 
     pub async fn start(&self) {
+        let config = Config::current();
+        let origins: Vec<&str> = config.cors_url.iter().map(|s| &**s).collect();
         let cors = warp::cors()
-            .allow_origin(Config::current().cors_url.as_str())
+            .allow_origins(origins)
             .allow_headers(vec![
                 "User-Agent",
                 "Sec-Fetch-Mode",
