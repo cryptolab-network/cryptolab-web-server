@@ -165,7 +165,7 @@ impl StakingRewardsCollector {
               err_code: -2,
             });
           }
-          let path = exe_dir.clone() + "\\ " + &self.addresses[0].address + ".json";
+          let path = exe_dir.clone() + "/ " + &self.addresses[0].address + ".json";
           // println!("{}", path);
           let response_file = File::open(path.clone());
           if let Ok(response_file) = response_file {
