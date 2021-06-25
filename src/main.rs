@@ -15,7 +15,7 @@ use std::{env};
 
 #[tokio::main]
 async fn main() {
-    env::set_var("RUST_LOG", "warp");
+    // env::set_var("RUST_LOG", "warp");
     env_logger::init();
     Config::init();
     let mongo_ip = env::var("MONGO_IP_ADDR");

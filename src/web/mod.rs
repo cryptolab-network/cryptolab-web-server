@@ -6,9 +6,6 @@ use warp::reject::Reject;
 mod kusama;
 mod polkadot;
 use super::config::Config;
-use std::convert::Infallible;
-use warp::http::StatusCode;
-use warp::Rejection;
 
 impl Reject for SRCError {}
 #[derive(Debug)]
@@ -85,9 +82,13 @@ impl WebServer {
             .with(cors)
             .with(warp::compression::gzip())
             .with(warp::log("warp_request"));
-        warp::serve(api_routes.or(routes).or(tool_routes).or(validator_status_routes)
-        .or(ksmvn_routes).or(dotvn_routes).or(dotsr_routes)
-        .or(onekv_routes).or(onekv_dot_routes).or(contact_routes)
-        ).run(([0, 0, 0, 0], self.port)).await;
+        if Config::current().serve_www.unwrap_or_default() {
+            warp::serve(api_routes.or(routes).or(tool_routes).or(validator_status_routes)
+            .or(ksmvn_routes).or(dotvn_routes).or(dotsr_routes)
+            .or(onekv_routes).or(onekv_dot_routes).or(contact_routes)
+            ).run(([0, 0, 0, 0], self.port)).await;
+        } else {
+            warp::serve(api_routes).run(([0, 0, 0, 0], self.port)).await;
+        }
     }
 }
