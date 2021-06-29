@@ -138,19 +138,29 @@ fn get_nominated_validators(
         .and(warp::path::param())
         .and(warp::path::end())
         .and_then(|db: Database, stash: String| async move {
-            let result = cache::get_nominator("DOT", stash);
+            let result = cache::get_nominator("KSM", stash);
             match result {
                 Ok(nominator) => {
-                    let chain_info = db.get_chain_info().await.unwrap();
-                    let result = db
-                        .get_validator_info(&nominator.targets, &chain_info.active_era)
-                        .await;
-                    match result {
-                        Ok(validators) => Ok(warp::reply::json(&validators)),
-                        Err(_) => Err(warp::reject::not_found()),
+                    let chain_info = db.get_chain_info().await;
+                    match chain_info {
+                        Ok(chain_info) => {
+                            let result = db
+                            .get_validator_info(&nominator.targets, &chain_info.active_era)
+                            .await;
+                            match result {
+                                Ok(validators) => Ok(warp::reply::json(&validators)),
+                                Err(_) => Err(warp::reject::not_found()),
+                            }
+                        },
+                        Err(_) => {
+                            Err(warp::reject::not_found())
+                        },
                     }
                 }
-                Err(_) => Err(warp::reject::not_found()),
+                Err(_) => {
+                    println!("{}", "failed to get nominated list from the cache");
+                    Err(warp::reject::not_found())
+                }
             }
         })
 }
