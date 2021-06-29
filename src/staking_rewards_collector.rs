@@ -268,12 +268,22 @@ impl StakingRewardsCollector {
 }
 
 fn validate_src_params(start: &String, end: &String) -> Option<Result<StakingRewardsCollector, SRCError>> {
-    let start_time = NaiveDateTime::parse_from_str(&(start.clone() + " 00:00:00"), "%Y-%m-%d %H:%M:%S").unwrap_or(
-      DateTime::parse_from_rfc3339("2020-01-01T00:00:00-00:00").unwrap().naive_utc()
-    );
-    let end_time = NaiveDateTime::parse_from_str(&(end.clone() + " 00:00:00"), "%Y-%m-%d %H:%M:%S").unwrap_or(
-      Utc::now().naive_utc()
-    );
+    let start_time = NaiveDateTime::parse_from_str(&(start.clone() + " 00:00:00"), "%Y-%m-%d %H:%M:%S");
+    if let Err(_) = start_time {
+      return Some(Err(SRCError{
+        err_code: -6,
+        message: "Incorrect date format".to_string(),
+      }));
+    }
+    let end_time = NaiveDateTime::parse_from_str(&(end.clone() + " 00:00:00"), "%Y-%m-%d %H:%M:%S");
+    if let Err(_) = end_time {
+      return Some(Err(SRCError{
+        err_code: -6,
+        message: "Incorrect date format".to_string(),
+      }));
+    }
+    let start_time = start_time.unwrap();
+    let end_time = end_time.unwrap();
     if start_time.lt(&DateTime::parse_from_rfc3339("2020-01-01T00:00:00-00:00").unwrap().naive_utc()) {
       return Some(Err(SRCError{
         err_code: -3,
@@ -335,8 +345,8 @@ fn test_call_exe_incorrect_address() {
   assert_eq!(true, result.is_err());
   let result = result.unwrap_err();
   assert_eq!(SRCError {
-    message: "failed to parse response to SRCResult".to_string(),
-    err_code: -9,
+    message: "No rewards are found".to_string(),
+    err_code: -2,
   }, result);
 }
 
@@ -429,9 +439,13 @@ fn test_incorrect_date_format() {
       start_balance: 0.1,
     }
   ]);
-  crate::config::Config::init();
-  let result = src.unwrap().call_exe(crate::config::Config::current().staking_rewards_collector_dir.to_string());
-  assert_eq!(true, result.is_ok());
+  assert_eq!(
+    SRCError{
+      err_code: -6,
+      message: "Incorrect date format".to_string(),
+    }, src.unwrap_err()
+  );
+  
 }
 
 #[test]
