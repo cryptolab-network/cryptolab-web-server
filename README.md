@@ -9,7 +9,7 @@
 2. In `cryptolab-web-server` folder Run `cargo build --release`
 
 3. Create ```config.json``` in ```./config``` folder
-and paste the following content to the .json file.
+and paste the following content to the .json file, modify to fit your configuration.
 
 ```json=
 
