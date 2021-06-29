@@ -23,7 +23,7 @@ and paste the following content to the .json file.
     "cors_url": ["http://127.0.0.1:3030", "http://localhost:3030", "http://127.0.0.1:8080"],
 
     "new_cache_folder": "../chain-data-collector/cache/kusama",
-    "new_cache_folder_polkadot": "..//chain-data-collector/cache/polkadot",
+    "new_cache_folder_polkadot": "../chain-data-collector/cache/polkadot",
 
     "staking_rewards_collector_dir": "../staking-rewards-collector",
     "serve_www": true
