@@ -2,9 +2,11 @@
 
 ## Build and setup
 
-1. Run `cargo build --release`
+1. Clone Staking Rewards Collector https://github.com/w3f/staking-rewards-collector to local machine
 
-2. Create ```config.json``` in ```/config``` folder
+2. Run `cargo build --release`
+
+3. Create ```config.json``` in ```/config``` folder
 and paste the following content to the .json file.
 
 ```json=
