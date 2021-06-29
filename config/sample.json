@@ -13,6 +13,6 @@
   "new_cache_folder": "../chain-data-collector/cache/kusama",
   "new_cache_folder_polkadot": "../chain-data-collector/cache/polkadot",
 
-  "staking_rewards_collector_dir": "../git/staking-rewards-collector",
+  "staking_rewards_collector_dir": "../staking-rewards-collector",
   "serve_www": true
 }
