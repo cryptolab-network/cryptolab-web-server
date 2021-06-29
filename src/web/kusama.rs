@@ -199,18 +199,25 @@ fn get_stash_rewards_collector(src_path: String) -> impl Filter<Extract = impl w
             let src = StakingRewardsCollector::new(p.start.unwrap_or(start), p.end.unwrap_or(end),
             p.currency.unwrap_or(currency), p.price_data.unwrap_or(true),
             vec![StakingRewardsAddress::new("".to_string(), stash.clone(), p.start_balance.unwrap_or(0.0))]);
-            let result = src.call_exe(src_path.to_string());
-            match result {
-                Ok(v) => {
-                    Ok(warp::reply::json(&v))
-                },
-                Err(err) => {
-                    println!("{}", err);
-                    if err.err_code == -2 {
-                        Err(warp::reject::not_found())
-                    } else {
-                        Err(warp::reject::custom(err))
+            match src {
+                Ok(src) => {
+                    let result = src.call_exe(src_path.to_string());
+                    match result {
+                        Ok(v) => {
+                            Ok(warp::reply::json(&v))
+                        },
+                        Err(e) => {
+                            println!("{}", e);
+                            if e.err_code == -2 {
+                                Err(warp::reject::not_found())
+                            } else {
+                                Err(warp::reject::custom(e))
+                            }
+                        },
                     }
+                },
+                Err(e) => {
+                    Err(warp::reject::custom(e))
                 },
             }
         })

@@ -1,6 +1,6 @@
 use std::{fmt, fs::{self, File}, path::PathBuf, process::{Command, Output}, sync::{Arc, Mutex}};
 
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
 use serde::{Serialize, Deserialize};
 
 use crate::types::{StashEraReward, StashRewards};
@@ -9,7 +9,7 @@ lazy_static! {
   static ref MUTEX: Arc<std::sync::Mutex<i32>> = Arc::new(Mutex::new(0));
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct SRCError {
     message: String,
     pub err_code: i32,
@@ -135,15 +135,19 @@ impl StakingRewardsCollector {
     end: String,
     currency: String,
     price_data: bool,
-    addresses: Vec<StakingRewardsAddress>) -> Self {
-    StakingRewardsCollector {
-      start: start,
-      end: end,
+    addresses: Vec<StakingRewardsAddress>) -> Result<Self, SRCError> {
+    // validate inputs
+    if let Some(value) = validate_src_params(&start, &end) {
+            return value;
+        }
+    Ok(StakingRewardsCollector {
+      start: start.clone(),
+      end: end.clone(),
       currency: currency,
       price_data: price_data.to_string(),
       addresses: addresses,
       export_output: true.to_string(),
-    }
+    })
   }
 
   pub fn call_exe(&self, exe_dir: String) -> Result<StashRewards, SRCError> {
@@ -155,11 +159,13 @@ impl StakingRewardsCollector {
       if let Ok(()) = result {
         // call exe
         let output  = self._call_exe(&exe_dir);
-        // println!("{:?}", output);
         let result = std::str::from_utf8(&output.stdout);
+        println!("{:?}", result);
         // parse response
         if let Ok(output) = result {
-          if output.starts_with("No rewards found to parse") {
+          if output.contains("No rewards found to parse") ||
+            output.contains("Your requested time window lies before prices are available.") ||
+            output.len() == 0 {
             return Err(SRCError {
               message: "No rewards are found".to_string(),
               err_code: -2,
@@ -259,4 +265,186 @@ impl StakingRewardsCollector {
       total_in_fiat: total_in_fiat,
     }
   }
+}
+
+fn validate_src_params(start: &String, end: &String) -> Option<Result<StakingRewardsCollector, SRCError>> {
+    let start_time = NaiveDateTime::parse_from_str(&(start.clone() + " 00:00:00"), "%Y-%m-%d %H:%M:%S").unwrap_or(
+      DateTime::parse_from_rfc3339("2020-01-01T00:00:00-00:00").unwrap().naive_utc()
+    );
+    let end_time = NaiveDateTime::parse_from_str(&(end.clone() + " 00:00:00"), "%Y-%m-%d %H:%M:%S").unwrap_or(
+      Utc::now().naive_utc()
+    );
+    if start_time.lt(&DateTime::parse_from_rfc3339("2020-01-01T00:00:00-00:00").unwrap().naive_utc()) {
+      return Some(Err(SRCError{
+        err_code: -3,
+        message: "Date cannot be earlier than 2020-01-01".to_string(),
+      }));
+    }
+    if end_time.lt(&DateTime::parse_from_rfc3339("2020-01-01T00:00:00-00:00").unwrap().naive_utc()) {
+      return Some(Err(SRCError{
+        err_code: -3,
+        message: "Date cannot be earlier than 2020-01-01".to_string(),
+      }));
+    }
+    if start_time.gt(&Utc::now().naive_utc()) {
+      return Some(Err(SRCError{
+        err_code: -4,
+        message: "Date cannot be a future date".to_string(),
+      }));
+    }
+    if end_time.gt(&Utc::now().naive_utc()) {
+      return Some(Err(SRCError{
+        err_code: -4,
+        message: "Date cannot be a future date".to_string(),
+      }));
+    }
+    if start_time.gt(&end_time) {
+      return Some(Err(SRCError{
+        err_code: -5,
+        message: "End date cannot be earlier than start date".to_string(),
+      }));
+    }
+    None
+}
+
+#[test]
+fn test_call_exe_good() {
+  let src = StakingRewardsCollector::new("2020-01-01".to_string(), "2021-06-28".to_string(), "USD".to_string(), true, vec![
+    StakingRewardsAddress {
+      name: "".to_string(),
+      address: "15Uv8ppUZVb8dM2uDf8rLnNPo4QdK9mHrJSUn6fqAhAtDZKu".to_string(),
+      start_balance: -0.1,
+    }
+  ]);
+  crate::config::Config::init();
+  let result = src.unwrap().call_exe(crate::config::Config::current().staking_rewards_collector_dir.to_string());
+  assert_eq!(true, result.is_ok());
+}
+
+#[test]
+fn test_call_exe_incorrect_address() {
+  let src = StakingRewardsCollector::new("2020-01-01".to_string(), "2021-06-28".to_string(), "USD".to_string(), true, vec![
+    StakingRewardsAddress {
+      name: "".to_string(),
+      address: "15Uv8ppUZVb8dMdK9mHrJSUn6fqAhAtDZKu".to_string(),
+      start_balance: 0.1,
+    }
+  ]);
+  crate::config::Config::init();
+  let result = src.unwrap().call_exe(crate::config::Config::current().staking_rewards_collector_dir.to_string());
+  assert_eq!(true, result.is_err());
+  let result = result.unwrap_err();
+  assert_eq!(SRCError {
+    message: "failed to parse response to SRCResult".to_string(),
+    err_code: -9,
+  }, result);
+}
+
+#[test]
+fn test_call_exe_no_rewards_found() {
+  let src = StakingRewardsCollector::new("2020-01-01".to_string(), "2020-01-02".to_string(), "USD".to_string(), true, vec![
+    StakingRewardsAddress {
+      name: "".to_string(),
+      address: "15Uv8ppUZVb8dM2uDf8rLnNPo4QdK9mHrJSUn6fqAhAtDZKu".to_string(),
+      start_balance: 0.1,
+    }
+  ]);
+  crate::config::Config::init();
+  let result = src.unwrap().call_exe(crate::config::Config::current().staking_rewards_collector_dir.to_string());
+  assert_eq!(true, result.is_err());
+  let result = result.unwrap_err();
+  assert_eq!(SRCError {
+    message: "No rewards are found".to_string(),
+    err_code: -2,
+  }, result);
+}
+
+#[test]
+fn test_call_exe_future_date() {
+  let end_date = chrono::NaiveDateTime::from_timestamp(chrono::offset::Utc::now().timestamp() + 86400, 0);
+  let src = StakingRewardsCollector::new("2020-01-01".to_string(), end_date.format("%Y-%m-%d").to_string(),
+   "USD".to_string(), true, vec![
+    StakingRewardsAddress {
+      name: "".to_string(),
+      address: "15Uv8ppUZVb8dM2uDf8rLnNPo4QdK9mHrJSUn6fqAhAtDZKu".to_string(),
+      start_balance: 0.1,
+    }
+  ]);
+
+  assert_eq!(
+    SRCError{
+      err_code: -4,
+      message: "Date cannot be a future date".to_string(),
+    }, src.unwrap_err()
+  );
+}
+
+
+#[test]
+fn test_call_exe_stale_date() {
+  let src = StakingRewardsCollector::new("2019-12-31".to_string(), "2021-04-01".to_string(),
+   "USD".to_string(), true, vec![
+    StakingRewardsAddress {
+      name: "".to_string(),
+      address: "15Uv8ppUZVb8dM2uDf8rLnNPo4QdK9mHrJSUn6fqAhAtDZKu".to_string(),
+      start_balance: 0.1,
+    }
+  ]);
+
+  assert_eq!(
+    SRCError{
+      err_code: -3,
+      message: "Date cannot be earlier than 2020-01-01".to_string(),
+    }, src.unwrap_err()
+  );
+}
+
+
+#[test]
+fn test_call_exe_end_date_earlier_than_start() {
+  let src = StakingRewardsCollector::new("2020-04-01".to_string(), "2020-03-31".to_string(),
+   "USD".to_string(), true, vec![
+    StakingRewardsAddress {
+      name: "".to_string(),
+      address: "15Uv8ppUZVb8dM2uDf8rLnNPo4QdK9mHrJSUn6fqAhAtDZKu".to_string(),
+      start_balance: 0.1,
+    }
+  ]);
+
+  assert_eq!(
+    SRCError{
+      err_code: -5,
+      message: "End date cannot be earlier than start date".to_string(),
+    }, src.unwrap_err()
+  );
+}
+
+#[test]
+fn test_incorrect_date_format() {
+  let src = StakingRewardsCollector::new("test".to_string(), "".to_string(),
+   "USD".to_string(), true, vec![
+    StakingRewardsAddress {
+      name: "".to_string(),
+      address: "15Uv8ppUZVb8dM2uDf8rLnNPo4QdK9mHrJSUn6fqAhAtDZKu".to_string(),
+      start_balance: 0.1,
+    }
+  ]);
+  crate::config::Config::init();
+  let result = src.unwrap().call_exe(crate::config::Config::current().staking_rewards_collector_dir.to_string());
+  assert_eq!(true, result.is_ok());
+}
+
+#[test]
+fn test_unsupported_currency() {
+  let src =  StakingRewardsCollector::new("2020-01-01".to_string(), "2021-04-01".to_string(),
+   "unsupported".to_string(), true, vec![
+    StakingRewardsAddress {
+      name: "".to_string(),
+      address: "15Uv8ppUZVb8dM2uDf8rLnNPo4QdK9mHrJSUn6fqAhAtDZKu".to_string(),
+      start_balance: 0.1,
+    }
+  ]);
+  crate::config::Config::init();
+  let result = src.unwrap().call_exe(crate::config::Config::current().staking_rewards_collector_dir.to_string());
+  assert_eq!(true, result.is_err());
 }
