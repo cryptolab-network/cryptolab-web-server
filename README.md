@@ -2,7 +2,11 @@
 
 ## Build and setup
 
+0. Setup your own MongoDB Server. (We use MongoDB Community Server V4.4.4)
+
 1. Clone Staking Rewards Collector https://github.com/w3f/staking-rewards-collector to local machine
+
+2. In `/staking-rewards-collector` folder run `npm install`
 
 2. Run `cargo build --release`
 
@@ -54,5 +58,7 @@ Run `cargo test`
 
 ## Run
 
-Run `cargo run --release`
+1. Start MongoDB server
+
+2. Run `cargo run --release`
 
