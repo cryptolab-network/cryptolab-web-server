@@ -138,7 +138,7 @@ fn get_nominated_validators(
         .and(warp::path::param())
         .and(warp::path::end())
         .and_then(|db: Database, stash: String| async move {
-            let result = cache::get_nominator("KSM", stash);
+            let result = cache::get_nominator("DOT", stash);
             match result {
                 Ok(nominator) => {
                     let chain_info = db.get_chain_info().await;
