@@ -12,7 +12,7 @@
 and paste the following content to the .json file, modify to fit your configuration.
 
 ```json=
-
+{
     "db_address": "127.0.0.1",
     "db_port": 27017,
     "kusama_db_name": "kusama",
