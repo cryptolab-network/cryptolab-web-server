@@ -54,3 +54,5 @@ Run `cargo test`
 
 ## Run
 
+Run `cargo run --release`
+
