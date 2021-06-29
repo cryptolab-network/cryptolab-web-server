@@ -2,12 +2,14 @@
 
 ## Build and setup
 
-1. Clone Staking Rewards Collector https://github.com/w3f/staking-rewards-collector to local machine
+0. Setup your own MongoDB Server. (We use MongoDB Community Server V4.4.4)
 
-2. Run `cargo build --release`
+1. Clone Staking Rewards Collector https://github.com/w3f/staking-rewards-collector to local machine and run `npm install`
 
-3. Create ```config.json``` in ```/config``` folder
-and paste the following content to the .json file.
+2. In `cryptolab-web-server` folder Run `cargo build --release`
+
+3. Create ```config.json``` in ```./config``` folder
+and paste the following content to the .json file, modify to fit your configuration.
 
 ```json=
 
@@ -23,7 +25,7 @@ and paste the following content to the .json file.
     "cors_url": ["http://127.0.0.1:3030", "http://localhost:3030", "http://127.0.0.1:8080"],
 
     "new_cache_folder": "../chain-data-collector/cache/kusama",
-    "new_cache_folder_polkadot": "..//chain-data-collector/cache/polkadot",
+    "new_cache_folder_polkadot": "../chain-data-collector/cache/polkadot",
 
     "staking_rewards_collector_dir": "../staking-rewards-collector",
     "serve_www": true
@@ -53,4 +55,8 @@ and paste the following content to the .json file.
 Run `cargo test`
 
 ## Run
+
+1. Start MongoDB server
+
+2. Run `cargo run --release`
 
