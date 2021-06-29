@@ -26,6 +26,7 @@ and paste the following content to the .json file.
     "staking_rewards_collector_dir": "../staking-rewards-collector",
     "serve_www": true
 }
+```
 
 `db_address` and `db_port` indicate the address of a mongoDB server.
 `kusama_db_name` and `polkadot_db_name` are the name of DB to save each data.
