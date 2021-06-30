@@ -202,6 +202,7 @@ pub struct StashRewards {
     #[serde(alias = "id")]
     pub stash: String,
     pub era_rewards: Vec<StashEraReward>,
+    pub total_in_fiat: f64,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
