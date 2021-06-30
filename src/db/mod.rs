@@ -4,9 +4,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use futures::StreamExt;
 use mongodb::bson::{self, bson, doc, Bson, Document};
 use mongodb::{options::ClientOptions, Client};
-use tokio::time;
 use std::fmt;
-use std::net::Ipv4Addr;
 use std::{collections::HashMap, error::Error};
 use types::ValidatorNominationInfo;
 
@@ -26,7 +24,7 @@ impl fmt::Display for DatabaseError {
 
 #[derive(Debug, Clone)]
 pub struct Database {
-    ip: Ipv4Addr,
+    ip: String,
     port: u16,
     db_name: String,
     client: Option<Client>,
@@ -34,7 +32,7 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(ip: Ipv4Addr, port: u16, db_name: &str) -> Self {
+    pub fn new(ip: String, port: u16, db_name: &str) -> Self {
         Database {
             ip: ip,
             port: port,
@@ -591,6 +589,7 @@ impl Database {
                     .find(doc! {"stash": _stash}, None)
                     .await
                     .unwrap();
+                let mut total_in_fiat = 0.0;
                 let mut era_rewards: Vec<types::StashEraReward> = vec![];
                 while let Some(stash_reward) = cursor.next().await {
                     let doc = stash_reward.unwrap();
@@ -637,6 +636,7 @@ impl Database {
                             }
                         }
                     }
+                    total_in_fiat += price * amount;
                     // println!("{:?} {:?}",price, price * amount);
                     era_rewards.push(types::StashEraReward {
                         era: era,
@@ -649,6 +649,7 @@ impl Database {
                 Ok(types::StashRewards {
                     stash: stash.to_string(),
                     era_rewards: era_rewards,
+                    total_in_fiat
                 })
             }
             Err(e) => {

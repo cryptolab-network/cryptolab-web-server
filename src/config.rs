@@ -10,13 +10,16 @@ pub struct Config {
     pub kusama_db_name: String,
     pub polkadot_db_name: String,
     pub port: u16,
-    pub cors_url: String,
+    pub cors_url: Vec<String>,
     pub db_has_credential: bool,
     pub db_username: Option<String>,
     pub db_password: Option<String>,
 
     pub new_cache_folder: String,
     pub new_cache_folder_polkadot: String,
+
+    pub staking_rewards_collector_dir: String,
+    pub serve_www: Option<bool>,
 }
 
 impl Config {
