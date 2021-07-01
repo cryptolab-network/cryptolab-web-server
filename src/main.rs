@@ -4,6 +4,8 @@ mod cache;
 mod config;
 mod db;
 mod types;
+mod cache_redis;
+mod polkadot_cache;
 mod web;
 mod staking_rewards_collector;
 

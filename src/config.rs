@@ -18,6 +18,9 @@ pub struct Config {
     pub new_cache_folder: String,
     pub new_cache_folder_polkadot: String,
 
+    pub redis: String,
+    pub redis_port: u16
+
     pub staking_rewards_collector_dir: String,
     pub serve_www: Option<bool>,
 }
