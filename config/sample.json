@@ -14,5 +14,8 @@
   "new_cache_folder_polkadot": "../chain-data-collector/cache/polkadot",
 
   "staking_rewards_collector_dir": "../staking-rewards-collector",
-  "serve_www": true
+  "serve_www": true,
+
+  "redis": "192.168.2.116",
+  "redis_port": 6379
 }

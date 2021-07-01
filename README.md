@@ -3,6 +3,9 @@
 ## Build and setup
 
 0. Setup your own MongoDB Server. (We use MongoDB Community Server V4.4.4)
+0. Setup your own Redis Server
+
+Ref. https://redis.io/topics/quickstart
 
 1. Clone Staking Rewards Collector https://github.com/w3f/staking-rewards-collector to local machine and run `npm install`
 
@@ -28,7 +31,10 @@ and paste the following content to the .json file, modify to fit your configurat
     "new_cache_folder_polkadot": "../chain-data-collector/cache/polkadot",
 
     "staking_rewards_collector_dir": "../staking-rewards-collector",
-    "serve_www": true
+    "serve_www": true,
+
+    "redis": "192.168.2.116",
+    "redis_port": 6379,
 }
 ```
 
@@ -49,6 +55,8 @@ and paste the following content to the .json file, modify to fit your configurat
 `staking_rewards_collector_dir` should be assigned to the folder where `Staking rewards collector` resides in.
 
 `serve_www` indicates whether the front end static files are served in this service.
+
+`redis` and `redis_port` indicate the redis address and port.
 
 ## Test
 
