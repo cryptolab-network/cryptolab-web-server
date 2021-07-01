@@ -5,7 +5,7 @@ mod config;
 mod db;
 mod types;
 mod cache_redis;
-mod polkadot_cache;
+// mod polkadot_cache;
 mod web;
 mod staking_rewards_collector;
 
@@ -14,6 +14,8 @@ use db::Database;
 use env_logger;
 use web::{WebServer, WebServerOptions};
 use std::{env};
+
+use crate::cache_redis::Cache;
 
 #[tokio::main]
 async fn main() {
@@ -41,6 +43,7 @@ async fn main() {
             let options = WebServerOptions {
                 kusama_db: kusama_db,
                 polkadot_db: polkadot_db,
+                cache: Cache{},
             };
 
             let server = WebServer::new(Config::current().port, options);

@@ -1,3 +1,4 @@
+use crate::cache_redis::Cache;
 use crate::staking_rewards_collector::SRCError;
 
 use super::db::Database;
@@ -20,28 +21,31 @@ impl Reject for Invalid {}
 pub struct WebServerOptions {
     pub kusama_db: Database,
     pub polkadot_db: Database,
+    pub cache: Cache,
 }
 
 pub struct WebServer {
     port: u16,
     kusama_db: Database,
     polkadot_db: Database,
+    cache: Cache,
 }
 
 impl WebServer {
     pub fn new(port: u16, options: WebServerOptions) -> Self {
         WebServer {
-            port: port,
+            port,
             kusama_db: options.kusama_db,
             polkadot_db: options.polkadot_db,
+            cache: options.cache,
         }
     }
 
     fn initialize_routes(
         &self,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        let routes = kusama::routes(self.kusama_db.clone())
-            .or(polkadot::routes(self.polkadot_db.clone()))
+        let routes = kusama::routes(self.kusama_db.clone(), self.cache.clone())
+            .or(polkadot::routes(self.polkadot_db.clone(), self.cache.clone()))
             .or(cryptolabApi::routes("KSM", self.kusama_db.clone()))
             .or(cryptolabApi::routes("DOT", self.polkadot_db.clone()))
             .recover(|error: Rejection| async move {
