@@ -1,3 +1,4 @@
+use serde::Deserialize;
 use crate::config::Config;
 use crate::staking_rewards_collector::{StakingRewardsAddress, StakingRewardsReport};
 use crate::staking_rewards_collector::StakingRewardsCollector;
@@ -329,7 +330,7 @@ pub fn routes(
                 match p.get("size") {
                     Some(_) => {
                         let chain_info = db.get_chain_info().await.unwrap();
-                        get_data_from_db(db, chain_info.active_era).await
+                        get_data_from_db(db, chain_info.active_era, None, None, None, None, None, None).await
                     }
                     None => handle_query_parameter_err().await,
                 }
