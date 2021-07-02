@@ -8,7 +8,7 @@ use warp::hyper::StatusCode;
 use warp::reject::Reject;
 mod kusama;
 mod polkadot;
-mod cryptolabApi;
+mod cryptolab_api;
 mod params;
 use params::InvalidParam;
 use super::config::Config;
@@ -46,8 +46,8 @@ impl WebServer {
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         let routes = kusama::routes(self.kusama_db.clone(), self.cache.clone())
             .or(polkadot::routes(self.polkadot_db.clone(), self.cache.clone()))
-            .or(cryptolabApi::routes("KSM", self.kusama_db.clone()))
-            .or(cryptolabApi::routes("DOT", self.polkadot_db.clone()))
+            .or(cryptolab_api::routes("KSM", self.kusama_db.clone()))
+            .or(cryptolab_api::routes("DOT", self.polkadot_db.clone()))
             .recover(|error: Rejection| async move {
                 // Do prettier error reporting for the default error here.
                 if error.is_not_found() {

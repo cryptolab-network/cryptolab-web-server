@@ -41,7 +41,7 @@ impl Cache {
             serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
           json.unwrap().valid
         },
-        Err(e) => {vec![]},
+        Err(_) => {vec![]},
     }
   }
   
@@ -67,7 +67,7 @@ impl Cache {
             serde_json::from_str(data.as_str()).expect("JSON was not well-formatted");
           json.unwrap()
         },
-        Err(e) => {vec![]},
+        Err(_) => {vec![]},
     }
   }
   

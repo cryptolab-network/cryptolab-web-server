@@ -176,9 +176,9 @@ pub struct ValidatorNominationInfo {
     status_change: StatusChange,
     identity: Option<Identity>,
     info: NominationInfoSimple,
-    rewards: Option<ValidatorTotalReward>,
     staker_points: Option<Vec<StakerPoint>>,
-    average_apy: Option<f32>
+    average_apy: Option<f32>,
+    slashes: Vec<ValidatorSlash>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -298,6 +298,24 @@ pub struct OneKvNominated {
     name: String,
     #[serde(deserialize_with = "parse_elected")]
     elected: bool,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatorSlash {
+    address: String,
+    #[serde(deserialize_with = "from_hex")]
+    total: u128,
+    others: Vec<ValidatorSlashNominator>,
+    era: u32,
+}
+
+#[derive(Serialize, Deserialize,  Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatorSlashNominator {
+    address: String,
+    #[serde(deserialize_with = "from_hex")]
+    value: u128,
 }
 
 // fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>

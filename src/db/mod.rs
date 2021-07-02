@@ -285,14 +285,14 @@ impl Database {
                 "as": "unclaimedEraInfo"
             },
         };
-        // let lookup_command3 = doc! {
-        //     "$lookup": {
-        //         "from": "nominator",
-        //         "localField": "nominators",
-        //         "foreignField": "address",
-        //         "as": "nominators"
-        //     },
-        // };
+        let lookup_command3 = doc! {
+            "$lookup": {
+                "from": "validatorSlash",
+                "localField": "validator",
+                "foreignField": "address",
+                "as": "slashes"
+            },
+        };
         let skip_command = doc! {
             "$skip": page * size,
         };
@@ -305,7 +305,7 @@ impl Database {
                 match_command,
                 lookup_command,
                 lookup_command2,
-                // lookup_command3,
+                lookup_command3,
                 skip_command,
                 limit_command,
             ],
@@ -434,6 +434,8 @@ impl Database {
                     let identity = _data.as_document().unwrap().get("identity");
                     let staker_points = _data.as_document().unwrap().get("stakerPoints");
                     let average_apy = _data.as_document().unwrap().get("averageApy");
+                    // println!("{:?}", doc.get("slashes"));
+                    let slashes = doc.get("slashes");
                     let default_identity = bson!({
                         "display": ""
                     });
@@ -449,43 +451,39 @@ impl Database {
                             _nominators.push(n.clone());
                         }
                     }
-                    let output: Document;
+
+                    let mut output = doc! {
+                        "id": id.unwrap(),
+                        "statusChange": status_change.unwrap(),
+                        "identity": identity.unwrap_or_else(|| &default_identity),
+                        "info": {
+                            "nominators": &_nominators,
+                            "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
+                            "era": doc.get("era").unwrap(),
+                            "commission": doc.get("commission").unwrap(),
+                            "apy": doc.get("apy").unwrap(),
+                            "exposure": doc.get("exposure").unwrap(),
+                            "unclaimedEras": unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap(),
+                            "total": doc.get("total").unwrap_or(&Bson::String("0x00".to_string())),
+                        },
+                        "stakerPoints": staker_points.unwrap(),
+                        "averageApy": average_apy.unwrap_or(&Bson::Int32(0)),
+                    };
                     if unclaimed_era_infos.len() == 0 {
-                        output = doc! {
-                            "id": id.unwrap(),
-                            "statusChange": status_change.unwrap(),
-                            "identity": identity.unwrap_or_else(|| &default_identity),
-                            "info": {
-                                "nominators": &_nominators,
-                                "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
-                                "era": doc.get("era").unwrap(),
-                                "commission": doc.get("commission").unwrap(),
-                                "apy": doc.get("apy").unwrap(),
-                                "exposure": doc.get("exposure").unwrap(),
-                                "unclaimedEras": bson! ([]),
-                                "total": doc.get("total").unwrap_or(&Bson::String("0x00".to_string())),
-                            },
-                            "stakerPoints": staker_points.unwrap(),
-                            "averageApy": average_apy.unwrap_or(&Bson::Int32(0)),
-                        };
+                        let info = output.get_document_mut("info").unwrap();
+                        info.insert("unclaimedEras", bson! ([]));
                     } else {
-                        output = doc! {
-                            "id": id.unwrap(),
-                            "statusChange": status_change.unwrap(),
-                            "identity": identity.unwrap_or_else(|| &default_identity),
-                            "info": {
-                                "nominators": &_nominators,
-                                "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
-                                "era": doc.get("era").unwrap(),
-                                "commission": doc.get("commission").unwrap(),
-                                "apy": doc.get("apy").unwrap(),
-                                "exposure": doc.get("exposure").unwrap(),
-                                "unclaimedEras": unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap(),
-                                "total": doc.get("total").unwrap_or(&Bson::String("0x00".to_string())),
-                            },
-                            "stakerPoints": staker_points.unwrap(),
-                            "averageApy": average_apy.unwrap_or(&Bson::Int32(0)),
-                        };
+                        let info = output.get_document_mut("info").unwrap();
+                        info.insert("unclaimedEras", unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap());
+                    }
+                    match slashes {
+                        Some(slashes) => {
+                            // println!("{}", slashes);
+                            output.insert("slashes", slashes);
+                        },
+                        None => {
+                            output.insert("slashes", bson! (null));
+                        }
                     }
                     // println!("{:?}", output);
                     let info: ValidatorNominationInfo =
