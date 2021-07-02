@@ -52,6 +52,9 @@ and paste the following content to the .json file, modify to fit your configurat
 
 ## Test
 
+Create ```config.json``` in ```./config``` folder
+and paste the following content to the .json file, modify to fit your configuration.
+
 Run `cargo test`
 
 ## Run
