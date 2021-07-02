@@ -12,6 +12,7 @@ mod staking_rewards_collector;
 use config::Config;
 use db::Database;
 use env_logger;
+use log::debug;
 use web::{WebServer, WebServerOptions};
 use std::{env};
 
@@ -20,12 +21,12 @@ use crate::cache_redis::Cache;
 #[tokio::main]
 async fn main() {
     // env::set_var("RUST_LOG", "warp");
-    env_logger::init();
+    env_logger::builder().filter_module("hyper", log::LevelFilter::Info).filter_level(log::LevelFilter::Debug).init();
     Config::init();
     let mongo_ip = env::var("MONGO_IP_ADDR");
-    println!("{:?}", mongo_ip);
+    debug!("{:?}", mongo_ip);
     let mongo_ip = mongo_ip.unwrap_or(Config::current().db_address.parse().unwrap());
-    println!("{}", mongo_ip);
+    debug!("{}", mongo_ip);
     let mut kusama_db = Database::new(
         mongo_ip.clone(),
         Config::current().db_port,

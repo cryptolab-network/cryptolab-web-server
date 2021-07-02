@@ -1,6 +1,7 @@
 use std::{fmt, fs::{self, File}, path::PathBuf, process::{Command, Output}, sync::{Arc, Mutex}};
 
 use chrono::{DateTime, NaiveDateTime, Utc};
+use log::debug;
 use serde::{Serialize, Deserialize};
 
 use crate::types::{StashEraReward, StashRewards};
@@ -160,7 +161,7 @@ impl StakingRewardsCollector {
         // call exe
         let output  = self._call_exe(&exe_dir);
         let result = std::str::from_utf8(&output.stdout);
-        println!("{:?}", result);
+        debug!("{:?}", result);
         // parse response
         if let Ok(output) = result {
           if output.contains("No rewards found to parse") ||
@@ -172,7 +173,6 @@ impl StakingRewardsCollector {
             });
           }
           let path = exe_dir.clone() + "/ " + &self.addresses[0].address + ".json";
-          // println!("{}", path);
           let response_file = File::open(path.clone());
           if let Ok(response_file) = response_file {
             let response: Result<SRCResult, serde_json::Error> = serde_json::from_reader(&response_file);
@@ -182,7 +182,6 @@ impl StakingRewardsCollector {
               Ok(self.make_response(&r))
             } else {
               *mutex += 1;
-              // println!("---{:?}", response);
               Err(SRCError {
                 message: "failed to parse response to SRCResult".to_string(),
                 err_code: -9,
@@ -190,7 +189,6 @@ impl StakingRewardsCollector {
             }
           } else {
             *mutex += 1;
-              // println!("---{:?}", response);
               Err(SRCError {
                 message: "failed to parse response to SRCResult".to_string(),
                 err_code: -9,

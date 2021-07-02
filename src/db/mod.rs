@@ -2,6 +2,7 @@ use super::config::Config;
 use super::types;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use futures::StreamExt;
+use log::error;
 use mongodb::bson::{self, bson, doc, Bson, Document};
 use mongodb::{options::ClientOptions, Client};
 use std::fmt;
@@ -142,7 +143,6 @@ impl Database {
                     .unwrap();
                 while let Some(result) = cursor.next().await {
                     let unwrapped = result.unwrap();
-                    // println!("{:?}", unwrapped);
                     let mut info: types::ValidatorNominationTrend =
                         bson::from_bson(Bson::Document(unwrapped)).unwrap();
                     let mut cursor2 = db
@@ -208,7 +208,7 @@ impl Database {
                 })
             }
             Err(e) => {
-                println!("{}", e);
+                error!("{}", e);
                 Err(e)
             }
         }
@@ -245,7 +245,7 @@ impl Database {
                 Ok(array)
             }
             Err(e) => {
-                println!("{}", e);
+                error!("{}", e);
                 Err(e)
             }
         }
@@ -318,7 +318,6 @@ impl Database {
         stashes: &Vec<String>,
         era: &u32,
     ) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
-        // println!("{:?}", stashes);
         let array = Vec::new();
         let match_command = doc! {
             "$match":{
@@ -420,7 +419,6 @@ impl Database {
                     .unwrap();
                 while let Some(result) = cursor.next().await {
                     let doc = result.unwrap();
-                    // println!("{:?}", doc);
                     let _data = &doc.get_array("data").unwrap()[0];
                     let id = _data.as_document().unwrap().get("id");
                     let default_unclaimed_eras = vec![bson! ({
@@ -434,7 +432,6 @@ impl Database {
                     let identity = _data.as_document().unwrap().get("identity");
                     let staker_points = _data.as_document().unwrap().get("stakerPoints");
                     let average_apy = _data.as_document().unwrap().get("averageApy");
-                    // println!("{:?}", doc.get("slashes"));
                     let slashes = doc.get("slashes");
                     let default_identity = bson!({
                         "display": ""
@@ -478,24 +475,21 @@ impl Database {
                     }
                     match slashes {
                         Some(slashes) => {
-                            // println!("{}", slashes);
+
                             output.insert("slashes", slashes);
                         },
                         None => {
                             output.insert("slashes", bson! (null));
                         }
                     }
-                    // println!("{:?}", output);
                     let info: ValidatorNominationInfo =
                         bson::from_bson(Bson::Document(output)).unwrap();
                     array.push(info);
-                    // println!("{:?}", unclaimed_era_info.as_document().unwrap().get_array("eras").unwrap());
-                    // println!("{:?}", info);
                 }
                 Ok(array)
             }
             Err(e) => {
-                println!("{}", e);
+                error!("{}", e);
                 Err(e)
             }
         }
@@ -515,7 +509,7 @@ impl Database {
                 }
             }
             Err(e) => {
-                println!("{}", e);
+                error!("{}", e);
                 Err(e)
             }
         }
@@ -566,7 +560,7 @@ impl Database {
                 })
             }
             Err(e) => {
-                println!("{}", e);
+                error!("{}", e);
                 Err(e)
             }
         }
@@ -627,7 +621,6 @@ impl Database {
                             match _price {
                                 Ok(_price) => {
                                     price = _price.price;
-                                    // println!("{:?}", price);
                                     self.price_cache.insert(t, price);
                                 }
                                 Err(_) => {}
@@ -635,7 +628,6 @@ impl Database {
                         }
                     }
                     total_in_fiat += price * amount;
-                    // println!("{:?} {:?}",price, price * amount);
                     era_rewards.push(types::StashEraReward {
                         era: era,
                         amount: amount,
@@ -651,7 +643,7 @@ impl Database {
                 })
             }
             Err(e) => {
-                println!("{}", e);
+                error!("{}", e);
                 Err(e)
             }
         }

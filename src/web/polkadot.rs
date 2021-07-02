@@ -1,3 +1,5 @@
+use log::debug;
+use log::error;
 use serde::Deserialize;
 use std::{collections::HashMap, convert::Infallible};
 use super::params::{ValidDetailOptions};
@@ -170,7 +172,7 @@ fn get_nominated_validators(
                     }
                 }
                 Err(_) => {
-                    println!("{}", "failed to get nominated list from the cache");
+                    error!("{}", "failed to get nominated list from the cache");
                     Err(warp::reject::not_found())
                 }
             }
@@ -203,7 +205,7 @@ fn get_stash_rewards_collector(src_path: String) -> impl Filter<Extract = impl w
         .and(warp::path::end())
         .and(warp::query::<StakingRewardsOptions>())
         .and_then(|stash: String, src_path: String, p: StakingRewardsOptions| async move {
-            println!("{:?}", p);
+            debug!("{:?}", p);
             let start = "2020-01-01".to_string();
             let end = chrono::Utc::now().format("%Y-%m-%d").to_string();
             let currency = "USD".to_string();
@@ -218,7 +220,7 @@ fn get_stash_rewards_collector(src_path: String) -> impl Filter<Extract = impl w
                             Ok(warp::reply::json(&v))
                         },
                         Err(e) => {
-                            println!("{}", e);
+                            error!("{}", e);
                             if e.err_code == -2 {
                                 Err(warp::reject::not_found())
                             } else {
@@ -245,7 +247,7 @@ fn get_stash_rewards_collector_csv(src_path: String) -> impl Filter<Extract = im
         .and_then(|stash: String, src_path: String| async move{
             // validate stash
             if !stash.chars().all(char::is_alphanumeric) {
-                println!("{}", stash);
+                error!("{}", stash);
                 Err(warp::reject::custom(Invalid))
             } else {
                 // get file from src path
@@ -275,7 +277,7 @@ fn get_stash_rewards_collector_json(src_path: String) -> impl Filter<Extract = i
         .and_then(|stash: String, src_path: String| async move{
             // validate stash
             if !stash.chars().all(char::is_alphanumeric) {
-                println!("{}", stash);
+                error!("{}", stash);
                 Err(warp::reject::custom(Invalid))
             } else {
                 // get file from src path

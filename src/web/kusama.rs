@@ -1,3 +1,4 @@
+use log::{debug, error};
 use serde::Deserialize;
 use crate::cache_redis::Cache;
 use crate::config::Config;
@@ -168,7 +169,7 @@ fn get_nominated_validators(
                     }
                 }
                 Err(_) => {
-                    println!("{}", "failed to get nominated list from the cache");
+                    error!("{}", "failed to get nominated list from the cache");
                     Err(warp::reject::not_found())
                 }
             }
@@ -227,7 +228,7 @@ fn get_stash_rewards_collector(src_path: String) -> impl Filter<Extract = impl w
                             Ok(warp::reply::json(&v))
                         },
                         Err(e) => {
-                            println!("{}", e);
+                            error!("{}", e);
                             if e.err_code == -2 {
                                 Err(warp::reject::not_found())
                             } else {
@@ -255,7 +256,7 @@ fn get_stash_rewards_collector_csv(src_path: String) -> impl Filter<Extract = im
         .and_then(|stash: String, src_path: String| async move{
             // validate stash
             if !stash.chars().all(char::is_alphanumeric) {
-                println!("{}", stash);
+                debug!("{}", stash);
                 Err(warp::reject::custom(Invalid))
             } else {
                 // get file from src path
@@ -286,7 +287,7 @@ fn get_stash_rewards_collector_json(src_path: String) -> impl Filter<Extract = i
         .and_then(|stash: String, src_path: String| async move{
             // validate stash
             if !stash.chars().all(char::is_alphanumeric) {
-                println!("{}", stash);
+                debug!("{}", stash);
                 Err(warp::reject::custom(Invalid))
             } else {
                 // get file from src path
