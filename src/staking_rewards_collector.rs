@@ -1,6 +1,6 @@
 use std::{fmt, fs::{self, File}, path::PathBuf, process::{Command, Output}, sync::{Arc, Mutex}};
 
-use chrono::{DateTime, NaiveDate, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Serialize, Deserialize};
 
 use crate::types::{StashEraReward, StashRewards};
