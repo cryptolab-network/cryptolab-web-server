@@ -347,20 +347,3 @@ pub fn routes(
             }));
     routes
 }
-
-fn get_all_validators(db: Database) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path("api")
-    .and(warp::path("allValidators"))
-    .and(warp::path::end())
-    .and(with_db(db.clone()))
-    .and(warp::query::<HashMap<String, String>>())
-    .and_then(|db: Database, p: HashMap<String, String>| async move {
-        match p.get("size") {
-            Some(_) => {
-                let chain_info = db.get_chain_info().await.unwrap();
-                get_data_from_db(db, chain_info.active_era, None, None, None, None, None, None).await
-            }
-            None => handle_query_parameter_err().await,
-        }
-    })
-}

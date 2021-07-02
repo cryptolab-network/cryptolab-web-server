@@ -1,6 +1,4 @@
-use super::config::Config;
-use super::types;
-use std::{fmt, fs, path::Path, time::UNIX_EPOCH};
+use std::{fmt};
 
 #[derive(Debug, Clone)]
 pub struct CacheError {

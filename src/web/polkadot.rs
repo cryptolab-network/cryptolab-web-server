@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use std::{collections::HashMap, convert::Infallible};
-use super::params::{AllValidatorOptions, ValidDetailOptions};
+use super::params::{ValidDetailOptions};
 use warp::http::StatusCode;
 use warp::Filter;
 use crate::cache_redis::Cache;
