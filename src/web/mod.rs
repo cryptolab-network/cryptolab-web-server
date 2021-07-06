@@ -44,30 +44,29 @@ impl WebServer {
     fn initialize_routes(
         &self,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        let routes = kusama::routes(self.kusama_db.clone(), self.cache.clone())
-            .or(polkadot::routes(self.polkadot_db.clone(), self.cache.clone()))
-            .or(cryptolab_api::routes("KSM", self.kusama_db.clone()))
-            .or(cryptolab_api::routes("DOT", self.polkadot_db.clone()))
-            .recover(|error: Rejection| async move {
-                // Do prettier error reporting for the default error here.
-                if error.is_not_found() {
-                    Ok(warp::reply::with_status(
-                        String::from("Data not found"),
-                        StatusCode::NOT_FOUND,
-                    ))
-                } else if let Some(InvalidParam) = error.find() {
-                    Ok(warp::reply::with_status(
-                        String::from("Invalid Parameters"),
-                        StatusCode::BAD_REQUEST,
-                    ))
-                } else {
-                    Ok(warp::reply::with_status(
-                        String::from("Internal error"),
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                    ))
-                }
-            });
-        routes
+        kusama::routes(self.kusama_db.clone(), self.cache.clone())
+        .or(polkadot::routes(self.polkadot_db.clone(), self.cache.clone()))
+        .or(cryptolab_api::routes("KSM", self.kusama_db.clone()))
+        .or(cryptolab_api::routes("DOT", self.polkadot_db.clone()))
+        .recover(|error: Rejection| async move {
+            // Do prettier error reporting for the default error here.
+            if error.is_not_found() {
+                Ok(warp::reply::with_status(
+                    String::from("Data not found"),
+                    StatusCode::NOT_FOUND,
+                ))
+            } else if let Some(InvalidParam) = error.find() {
+                Ok(warp::reply::with_status(
+                    String::from("Invalid Parameters"),
+                    StatusCode::BAD_REQUEST,
+                ))
+            } else {
+                Ok(warp::reply::with_status(
+                    String::from("Internal error"),
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                ))
+            }
+        })
     }
 
     pub async fn start(&self) {

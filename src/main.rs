@@ -11,7 +11,6 @@ mod staking_rewards_collector;
 
 use config::Config;
 use db::Database;
-use env_logger;
 use log::debug;
 use web::{WebServer, WebServerOptions};
 use std::{env};
@@ -25,7 +24,7 @@ async fn main() {
     Config::init();
     let mongo_ip = env::var("MONGO_IP_ADDR");
     debug!("{:?}", mongo_ip);
-    let mongo_ip = mongo_ip.unwrap_or(Config::current().db_address.parse().unwrap());
+    let mongo_ip = mongo_ip.unwrap_or_else(|_| Config::current().db_address.parse().unwrap());
     debug!("{}", mongo_ip);
     let mut kusama_db = Database::new(
         mongo_ip.clone(),
@@ -42,8 +41,8 @@ async fn main() {
             );
             let _ = polkadot_db.connect().await;
             let options = WebServerOptions {
-                kusama_db: kusama_db,
-                polkadot_db: polkadot_db,
+                kusama_db,
+                polkadot_db,
                 cache: Cache{},
             };
 

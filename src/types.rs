@@ -350,7 +350,7 @@ fn parse_stash_name<'de, D>(d: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,
 {
-    Deserialize::deserialize(d).map(|x: Option<_>| x.unwrap_or("N/A".to_string()))
+    Deserialize::deserialize(d).map(|x: Option<_>| x.unwrap_or_else(|| "N/A".to_string()))
 }
 
 fn parse_elected<'de, D>(d: D) -> Result<bool, D::Error>

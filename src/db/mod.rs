@@ -1,3 +1,4 @@
+use self::params::AllValidatorOptions;
 use super::config::Config;
 use super::types;
 use chrono::{DateTime, NaiveDateTime, Utc};
@@ -8,6 +9,7 @@ use mongodb::{options::ClientOptions, Client};
 use std::fmt;
 use std::{collections::HashMap, error::Error};
 use types::ValidatorNominationInfo;
+pub(crate) mod params;
 
 // Define our error types. These may be customized for our error handling cases.
 // Now we will be able to write our own errors, defer to an underlying error
@@ -35,8 +37,8 @@ pub struct Database {
 impl Database {
     pub fn new(ip: String, port: u16, db_name: &str) -> Self {
         Database {
-            ip: ip,
-            port: port,
+            ip,
+            port,
             db_name: db_name.to_string(),
             client: None,
             price_cache: HashMap::new(),
@@ -141,7 +143,7 @@ impl Database {
                     )
                     .await
                     .unwrap();
-                while let Some(result) = cursor.next().await {
+                if let Some(result) = cursor.next().await {
                     let unwrapped = result.unwrap();
                     let mut info: types::ValidatorNominationTrend =
                         bson::from_bson(Bson::Document(unwrapped)).unwrap();
@@ -186,7 +188,7 @@ impl Database {
                         )
                         .await
                         .unwrap();
-                    while let Some(result2) = cursor2.next().await {
+                    if let Some(result2) = cursor2.next().await {
                         let info2: types::NominationInfo =
                             bson::from_bson(Bson::Document(result2.unwrap())).unwrap();
                         let mut index: i32 = -1;
@@ -197,9 +199,8 @@ impl Database {
                         }
                         if index >= 0 {
                             info.info[index as usize]
-                                .set_nominators(info2.nominators.unwrap_or_else(|| vec![]));
+                                .set_nominators(info2.nominators.unwrap_or_else(std::vec::Vec::new));
                         }
-                        break;
                     }
                     return Ok(info);
                 }
@@ -254,19 +255,14 @@ impl Database {
     pub async fn get_all_validator_info_of_era(
         &self,
         era: u32,
-        page: u32,
-        size: u32,
-        apy_min: f32,
-        apy_max: f32,
-        commission_min: f32,
-        commission_max: f32,
+        options: AllValidatorOptions,
     ) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
         let array = Vec::new();
         let match_command = doc! {
             "$match":{
                 "era": era,
-                "apy": {"$lte": apy_max, "$gte": apy_min},
-                "commission": {"$lte": commission_max * 100.0, "$gte": commission_min * 100.0},
+                "apy": {"$lte": options.apy_max, "$gte": options.apy_min},
+                "commission": {"$lte": options.commission_max * 100.0, "$gte": options.commission_min * 100.0},
             },
         };
         let lookup_command = doc! {
@@ -294,10 +290,10 @@ impl Database {
             },
         };
         let skip_command = doc! {
-            "$skip": page * size,
+            "$skip": options.page * options.size,
         };
         let limit_command = doc! {
-            "$limit": size,
+            "$limit": options.size,
         };
         self.do_get_validator_info(
             array,
@@ -315,7 +311,7 @@ impl Database {
 
     pub async fn get_validator_info(
         &self,
-        stashes: &Vec<String>,
+        stashes: &[String],
         era: &u32,
     ) -> Result<Vec<types::ValidatorNominationInfo>, DatabaseError> {
         let array = Vec::new();
@@ -452,7 +448,7 @@ impl Database {
                     let mut output = doc! {
                         "id": id.unwrap(),
                         "statusChange": status_change.unwrap(),
-                        "identity": identity.unwrap_or_else(|| &default_identity),
+                        "identity": identity.unwrap_or(&default_identity),
                         "info": {
                             "nominators": &_nominators,
                             "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
@@ -466,11 +462,10 @@ impl Database {
                         "stakerPoints": staker_points.unwrap(),
                         "averageApy": average_apy.unwrap_or(&Bson::Int32(0)),
                     };
-                    if unclaimed_era_infos.len() == 0 {
-                        let info = output.get_document_mut("info").unwrap();
+                    let info = output.get_document_mut("info").unwrap();
+                    if unclaimed_era_infos.is_empty() {
                         info.insert("unclaimedEras", bson! ([]));
                     } else {
-                        let info = output.get_document_mut("info").unwrap();
                         info.insert("unclaimedEras", unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap());
                     }
                     match slashes {
@@ -535,22 +530,21 @@ impl Database {
                     .find(doc! {"timestamp": timestamp}, None)
                     .await
                     .unwrap();
-                while let Some(coin_price) = cursor.next().await {
+                if let Some(coin_price) = cursor.next().await {
                     let doc = coin_price.unwrap();
-
-                    let price = doc.get("price").unwrap().as_f64().unwrap_or_else(|| 0.0);
+                    let price = doc.get("price").unwrap().as_f64().unwrap_or(0.0);
                     let timestamp = doc.get("timestamp").unwrap().as_i32().unwrap_or(0);
                     if timestamp == 0 {
                         let timestamp = doc.get("timestamp").unwrap().as_i64().unwrap_or(0);
                         let price = types::CoinPrice {
                             timestamp: timestamp as i64,
-                            price: price,
+                            price,
                         };
                         return Ok(price);
                     } else {
                         let price = types::CoinPrice {
                             timestamp: timestamp as i64,
-                            price: price,
+                            price,
                         };
                         return Ok(price);
                     }
@@ -568,9 +562,8 @@ impl Database {
 
     pub async fn get_stash_reward(
         &mut self,
-        stash: &String,
+        stash: &str,
     ) -> Result<types::StashRewards, DatabaseError> {
-        let _stash = stash.clone();
         match self.client.as_ref().ok_or(DatabaseError {
             message: "Mongodb client is not working as expected.".to_string(),
         }) {
@@ -578,7 +571,7 @@ impl Database {
                 let db = client.database(&self.db_name);
                 let mut cursor = db
                     .collection("stashInfo")
-                    .find(doc! {"stash": _stash}, None)
+                    .find(doc! {"stash": stash}, None)
                     .await
                     .unwrap();
                 let mut total_in_fiat = 0.0;
@@ -590,7 +583,7 @@ impl Database {
                         Some(_era) => era = _era,
                         None => continue,
                     }
-                    let amount = doc.get("amount").unwrap().as_f64().unwrap_or_else(|| 0.0);
+                    let amount = doc.get("amount").unwrap().as_f64().unwrap_or(0.0);
                     let _timestamp = doc.get("timestamp").unwrap().as_i64();
                     let timestamp: i64;
                     let naive: NaiveDateTime;
@@ -618,27 +611,24 @@ impl Database {
                         }
                         Err(_) => {
                             let _price = self.get_price_of_day(t).await;
-                            match _price {
-                                Ok(_price) => {
-                                    price = _price.price;
-                                    self.price_cache.insert(t, price);
-                                }
-                                Err(_) => {}
+                            if let Ok(_price) = _price {
+                                price = _price.price;
+                                self.price_cache.insert(t, price);
                             }
                         }
                     }
                     total_in_fiat += price * amount;
                     era_rewards.push(types::StashEraReward {
-                        era: era,
-                        amount: amount,
+                        era,
+                        amount,
                         timestamp: (timestamp) as i64,
-                        price: price,
+                        price,
                         total: price * amount,
                     })
                 }
                 Ok(types::StashRewards {
                     stash: stash.to_string(),
-                    era_rewards: era_rewards,
+                    era_rewards,
                     total_in_fiat
                 })
             }

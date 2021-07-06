@@ -94,11 +94,7 @@ pub struct StakingRewardsReport {
 
 impl StakingRewardsReport {
   pub fn new(exe_dir: String, stash: String, format: String) -> Self {
-    StakingRewardsReport {
-      exe_dir: exe_dir,
-      stash: stash,
-      format: format,
-    }
+    StakingRewardsReport { stash, format, exe_dir }
   }
 
   pub fn get_report(&self) -> Result<String, SRCError> {
@@ -106,13 +102,13 @@ impl StakingRewardsReport {
     path.push(self.exe_dir.clone());
     path.push(" ".to_string() + &self.stash + "." + &self.format);
     let response_file = File::open(path.clone());
-    if let Ok(_) = response_file {
+    if response_file.is_ok() {
       Ok(fs::read_to_string(path).unwrap())
     } else {
-      return Err(SRCError {
+      Err(SRCError {
         message: "Reward report is not found".to_string(),
         err_code: -20,
-      });
+      })
     }
   }
 }
@@ -123,9 +119,9 @@ impl StakingRewardsAddress {
     address: String,
     start_balance: f64) -> Self {
       StakingRewardsAddress {
-        name: name,
-        address: address,
-        start_balance: start_balance,
+        name,
+        address,
+        start_balance,
       }
   }
 }
@@ -142,11 +138,11 @@ impl StakingRewardsCollector {
             return value;
         }
     Ok(StakingRewardsCollector {
-      start: start.clone(),
-      end: end.clone(),
-      currency: currency,
+      start,
+      end,
+      currency,
       price_data: price_data.to_string(),
-      addresses: addresses,
+      addresses,
       export_output: true.to_string(),
     })
   }
@@ -154,7 +150,7 @@ impl StakingRewardsCollector {
   pub fn call_exe(&self, exe_dir: String) -> Result<StashRewards, SRCError> {
     let mut mutex = MUTEX.lock().unwrap();
     let input = exe_dir.clone() + "/config/userInput.json";
-    let file = &File::create(input.clone());
+    let file = &File::create(input);
     if let Ok(file) = file {
       let result = serde_json::to_writer_pretty(file, &self);
       if let Ok(()) = result {
@@ -166,14 +162,14 @@ impl StakingRewardsCollector {
         if let Ok(output) = result {
           if output.contains("No rewards found to parse") ||
             output.contains("Your requested time window lies before prices are available.") ||
-            output.len() == 0 {
+            output.is_empty() {
             return Err(SRCError {
               message: "No rewards are found".to_string(),
               err_code: -2,
             });
           }
-          let path = exe_dir.clone() + "/ " + &self.addresses[0].address + ".json";
-          let response_file = File::open(path.clone());
+          let path = exe_dir + "/ " + &self.addresses[0].address + ".json";
+          let response_file = File::open(path);
           if let Ok(response_file) = response_file {
             let response: Result<SRCResult, serde_json::Error> = serde_json::from_reader(&response_file);
             if let Ok(mut r) = response {
@@ -210,14 +206,14 @@ impl StakingRewardsCollector {
       }
     } else {
       *mutex += 1;
-      return Err(SRCError {
+      Err(SRCError {
         message: "failed to create userInput.json".to_string(),
         err_code: -12,
-      });
+      })
     }
   }
 
-  fn _call_exe<'a>(&self, exe_dir: &'a str) -> Output {
+  fn _call_exe(&self, exe_dir: &str) -> Output {
     let output = if cfg!(target_os = "windows") {
       Command::new("cmd")
       .current_dir(exe_dir)
@@ -250,7 +246,7 @@ impl StakingRewardsCollector {
         era: 0,
         amount: daily_rewards.amount_human_readable,
         timestamp: chrono::NaiveDateTime::parse_from_str(date_str.as_str(), "%d-%m-%Y %H:%M:%S")
-        .unwrap_or(chrono::NaiveDateTime::from_timestamp(0, 0)).timestamp_millis(),
+        .unwrap_or_else(|_| chrono::NaiveDateTime::from_timestamp(0, 0)).timestamp_millis(),
         price: daily_rewards.price,
         total: daily_rewards.value_fiat,
       });
@@ -259,22 +255,22 @@ impl StakingRewardsCollector {
 
     StashRewards {
       stash: src_result.address.to_string(),
-      era_rewards: era_rewards,
-      total_in_fiat: total_in_fiat,
+      era_rewards,
+      total_in_fiat,
     }
   }
 }
 
-fn validate_src_params(start: &String, end: &String) -> Option<Result<StakingRewardsCollector, SRCError>> {
-    let start_time = NaiveDateTime::parse_from_str(&(start.clone() + " 00:00:00"), "%Y-%m-%d %H:%M:%S");
-    if let Err(_) = start_time {
+fn validate_src_params(start: &str, end: &str) -> Option<Result<StakingRewardsCollector, SRCError>> {
+    let start_time = NaiveDateTime::parse_from_str(&(start.to_string() + " 00:00:00"), "%Y-%m-%d %H:%M:%S");
+    if start_time.is_err() {
       return Some(Err(SRCError{
         err_code: -6,
         message: "Incorrect date format".to_string(),
       }));
     }
-    let end_time = NaiveDateTime::parse_from_str(&(end.clone() + " 00:00:00"), "%Y-%m-%d %H:%M:%S");
-    if let Err(_) = end_time {
+    let end_time = NaiveDateTime::parse_from_str(&(end.to_string() + " 00:00:00"), "%Y-%m-%d %H:%M:%S");
+    if end_time.is_err() {
       return Some(Err(SRCError{
         err_code: -6,
         message: "Incorrect date format".to_string(),
@@ -326,7 +322,7 @@ fn test_call_exe_good() {
   ]);
   crate::config::Config::init();
   let result = src.unwrap().call_exe(crate::config::Config::current().staking_rewards_collector_dir.to_string());
-  assert_eq!(true, result.is_ok());
+  assert!(result.is_ok());
 }
 
 #[test]
@@ -340,7 +336,7 @@ fn test_call_exe_incorrect_address() {
   ]);
   crate::config::Config::init();
   let result = src.unwrap().call_exe(crate::config::Config::current().staking_rewards_collector_dir.to_string());
-  assert_eq!(true, result.is_err());
+  assert!(result.is_err());
   let result = result.unwrap_err();
   assert_eq!(SRCError {
     message: "No rewards are found".to_string(),
@@ -359,7 +355,7 @@ fn test_call_exe_no_rewards_found() {
   ]);
   crate::config::Config::init();
   let result = src.unwrap().call_exe(crate::config::Config::current().staking_rewards_collector_dir.to_string());
-  assert_eq!(true, result.is_err());
+  assert!(result.is_err());
   let result = result.unwrap_err();
   assert_eq!(SRCError {
     message: "No rewards are found".to_string(),
@@ -458,5 +454,5 @@ fn test_unsupported_currency() {
   ]);
   crate::config::Config::init();
   let result = src.unwrap().call_exe(crate::config::Config::current().staking_rewards_collector_dir.to_string());
-  assert_eq!(true, result.is_err());
+  assert!(result.is_err());
 }

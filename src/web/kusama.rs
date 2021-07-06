@@ -8,7 +8,7 @@ use crate::web::Invalid;
 
 // use super::super::cache;
 use super::super::db::Database;
-use super::params::{ValidDetailOptions};
+use super::params::{AllValidatorOptions, ValidDetailOptions};
 use std::{collections::HashMap, convert::Infallible};
 use warp::http::StatusCode;
 use warp::Filter;
@@ -23,38 +23,36 @@ struct StakingRewardsOptions {
 }
 
 fn get_validators(cache: Cache) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    let path = warp::path("api")
-        .and(warp::path("validators"))
-        .and(warp::path::end())
-        .map(move || warp::reply::json(&cache.get_validators("KSM")));
-    path
+    warp::path("api")
+    .and(warp::path("validators"))
+    .and(warp::path::end())
+    .map(move || warp::reply::json(&cache.get_validators("KSM")))
 }
 
 fn get_validator_trend(
     db: Database,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path("api")
-        .and(warp::path("validator"))
-        .and(with_db(db))
-        .and(warp::path::param())
-        .and(warp::path("trend"))
-        .and(warp::path::end())
-        .and_then(|db: Database, stash: String| async move {
-            let validator = db.get_validator(stash).await;
-            match validator {
-                Ok(v) => Ok(warp::reply::json(&[v])),
-                Err(_) => Err(warp::reject::not_found()),
-            }
-        })
+    .and(warp::path("validator"))
+    .and(with_db(db))
+    .and(warp::path::param())
+    .and(warp::path("trend"))
+    .and(warp::path::end())
+    .and_then(|db: Database, stash: String| async move {
+        let validator = db.get_validator(stash).await;
+        match validator {
+            Ok(v) => Ok(warp::reply::json(&[v])),
+            Err(_) => Err(warp::reject::not_found()),
+        }
+    })
 }
 
 fn get_1kv_validators(cache: Cache) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
 {
-    let path = warp::path("api")
-        .and(warp::path("valid"))
-        .and(warp::path::end())
-        .map(move || warp::reply::json(&cache.get_1kv_info_detail("KSM")));
-    path
+    warp::path("api")
+    .and(warp::path("valid"))
+    .and(warp::path::end())
+    .map(move || warp::reply::json(&cache.get_1kv_info_detail("KSM")))
 }
 
 fn with_db(
@@ -96,16 +94,9 @@ fn get_validator_unclaimed_eras(
 async fn get_data_from_db(
     db: Database,
     era: u32,
-    size: Option<u32>,
-    page: Option<u32>,
-    apy_min: Option<f32>,
-    apy_max: Option<f32>,
-    commission_min: Option<f32>,
-    commission_max: Option<f32>,
+    options: AllValidatorOptions,
 ) -> Result<warp::reply::WithStatus<warp::reply::Json>, Infallible> {
-    let result = db.get_all_validator_info_of_era(era, page.unwrap_or(0),
-     size.unwrap_or(4000), apy_min.unwrap_or(0.0), apy_max.unwrap_or(100.0),
-     commission_min.unwrap_or(0.0), commission_max.unwrap_or(100.0)).await;
+    let result = db.get_all_validator_info_of_era(era, options.to_db_all_validator_options()).await;
     Ok(warp::reply::with_status(
         warp::reply::json(&result.unwrap()),
         StatusCode::OK,
@@ -114,27 +105,23 @@ async fn get_data_from_db(
 
 fn get_validator_detail(cache: Cache) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
 {
-    let path = warp::path("api")
-        .and(warp::path("validDetail"))
-        .and(warp::path::end())
-        .and(warp::query().map(move |opt: ValidDetailOptions| {
-            if opt.option == "1kv" {
-                warp::reply::json(&cache.get_1kv_info_simple("KSM"))
-            } else if opt.option == "all" {
-                warp::reply::json(&cache.get_validators("KSM"))
-            } else {
-                warp::reply::json(&cache.get_validators("KSM"))
-            }
-        }));
-    path
+    warp::path("api")
+    .and(warp::path("validDetail"))
+    .and(warp::path::end())
+    .and(warp::query().map(move |opt: ValidDetailOptions| {
+        if opt.option == "1kv" {
+            warp::reply::json(&cache.get_1kv_info_simple("KSM"))
+        } else {
+            warp::reply::json(&cache.get_validators("KSM"))
+        }
+    }))
 }
 
 fn get_nominators(cache: Cache) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    let path = warp::path("api")
-        .and(warp::path("nominators"))
-        .and(warp::path::end())
-        .map(move || warp::reply::json(&cache.get_nominators("KSM")));
-    path
+    warp::path("api")
+    .and(warp::path("nominators"))
+    .and(warp::path::end())
+    .map(move || warp::reply::json(&cache.get_nominators("KSM")))
 }
 
 fn get_nominated_validators(
@@ -178,30 +165,29 @@ fn get_nominated_validators(
 
 fn get_1kv_nominators(cache: Cache) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
 {
-    let path = warp::path("api")
-        .and(warp::path("1kv"))
-        .and(warp::path("nominators"))
-        .and(warp::path::end())
-        .map(move || warp::reply::json(&cache.get_1kv_nominators("KSM")));
-    path
+    warp::path("api")
+    .and(warp::path("1kv"))
+    .and(warp::path("nominators"))
+    .and(warp::path::end())
+    .map(move || warp::reply::json(&cache.get_1kv_nominators("KSM")))
 }
 
 fn get_stash_rewards(
     db: Database,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path("api")
-        .and(warp::path("stash"))
-        .and(with_db(db))
-        .and(warp::path::param())
-        .and(warp::path("rewards"))
-        .and(warp::path::end())
-        .and_then(|mut db: Database, stash: String| async move {
-            let validator = db.get_stash_reward(&stash).await;
-            match validator {
-                Ok(v) => Ok(warp::reply::json(&v)),
-                Err(_) => Err(warp::reject::not_found()),
-            }
-        })
+    .and(warp::path("stash"))
+    .and(with_db(db))
+    .and(warp::path::param())
+    .and(warp::path("rewards"))
+    .and(warp::path::end())
+    .and_then(|mut db: Database, stash: String| async move {
+        let validator = db.get_stash_reward(&stash).await;
+        match validator {
+            Ok(v) => Ok(warp::reply::json(&v)),
+            Err(_) => Err(warp::reject::not_found()),
+        }
+    })
 }
 
 fn get_stash_rewards_collector(src_path: String) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
@@ -318,33 +304,31 @@ async fn handle_query_parameter_err(
 pub fn routes(
     db: Database,
     cache: Cache,
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    let routes = 
-        get_validators(cache.clone())
-        .or(get_validator_detail(cache.clone()))
-        .or(get_validator_trend(db.clone()))
-        .or(get_1kv_validators(cache.clone()))
-        .or(get_nominators(cache.clone()))
-        .or(get_nominated_validators(db.clone(), cache.clone()))
-        .or(get_1kv_nominators(cache.clone()))
-        .or(get_validator_unclaimed_eras(db.clone()))
-        .or(get_stash_rewards(db.clone()))
-        .or(get_stash_rewards_collector(Config::current().staking_rewards_collector_dir.to_string()))
-        .or(get_stash_rewards_collector_csv(Config::current().staking_rewards_collector_dir.to_string()))
-        .or(get_stash_rewards_collector_json(Config::current().staking_rewards_collector_dir.to_string()))
-        .or(warp::path("api")
-            .and(warp::path("allValidators"))
-            .and(warp::path::end())
-            .and(with_db(db.clone()))
-            .and(warp::query::<HashMap<String, String>>())
-            .and_then(|db: Database, p: HashMap<String, String>| async move {
-                match p.get("size") {
-                    Some(_) => {
-                        let chain_info = db.get_chain_info().await.unwrap();
-                        get_data_from_db(db, chain_info.active_era, None, None, None, None, None, None).await
-                    }
-                    None => handle_query_parameter_err().await,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone { 
+    get_validators(cache.clone())
+    .or(get_validator_detail(cache.clone()))
+    .or(get_validator_trend(db.clone()))
+    .or(get_1kv_validators(cache.clone()))
+    .or(get_nominators(cache.clone()))
+    .or(get_nominated_validators(db.clone(), cache.clone()))
+    .or(get_1kv_nominators(cache))
+    .or(get_validator_unclaimed_eras(db.clone()))
+    .or(get_stash_rewards(db.clone()))
+    .or(get_stash_rewards_collector(Config::current().staking_rewards_collector_dir.to_string()))
+    .or(get_stash_rewards_collector_csv(Config::current().staking_rewards_collector_dir.to_string()))
+    .or(get_stash_rewards_collector_json(Config::current().staking_rewards_collector_dir.to_string()))
+    .or(warp::path("api")
+        .and(warp::path("allValidators"))
+        .and(warp::path::end())
+        .and(with_db(db))
+        .and(warp::query::<HashMap<String, String>>())
+        .and_then(|db: Database, p: HashMap<String, String>| async move {
+            match p.get("size") {
+                Some(_) => {
+                    let chain_info = db.get_chain_info().await.unwrap();
+                    get_data_from_db(db, chain_info.active_era, AllValidatorOptions::new()).await
                 }
-            }));
-    routes
+                None => handle_query_parameter_err().await,
+            }
+        }))
 }

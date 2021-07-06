@@ -54,9 +54,13 @@ impl Cache {
   
   pub fn get_1kv_info_detail(&self, chain: &str) -> types::ValidatorDetail1kv {
     let result: Result<String, RedisError> = self.connect().unwrap().get(format!("{}onekv", chain));
+    let timestamp_result: Result<String, RedisError> = self.connect().unwrap().get(format!("{}onekv_timestamp", chain));
     let json: Option<types::ValidatorDetail1kv> =
     serde_json::from_str(result.unwrap().as_str()).expect("JSON was not well-formatted");
-    json.unwrap()
+    let mut data = json.unwrap();
+    let modified_time = timestamp_result.unwrap_or_else(|_| "0".to_string()).parse::<u64>().ok();
+    data.modified_time = modified_time;
+    data
   }
   
   pub fn get_nominators(&self, chain: &str) -> Vec<types::NominatorNomination> {
