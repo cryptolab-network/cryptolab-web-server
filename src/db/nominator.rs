@@ -1,0 +1,6 @@
+use Database;
+
+impl Database {
+
+}
+

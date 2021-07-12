@@ -135,8 +135,9 @@ pub struct Nominator {
 pub struct NominatorNomination {
     #[serde(alias = "address", alias = "accountId")]
     pub account_id: String,
-    balance: Balance,
+    pub balance: Balance,
     pub targets: Vec<String>,
+    pub rewards: Option<StashRewards>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

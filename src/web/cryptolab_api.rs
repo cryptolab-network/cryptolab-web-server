@@ -33,8 +33,30 @@ fn get_all_validators(chain: &'static str, db: Database) -> impl Filter<Extract 
     .and(validate_get_all_validators())
     .and_then(|db: Database, p: AllValidatorOptions| async move {
         let chain_info = db.get_chain_info().await.unwrap();
-        get_data_from_db(db, chain_info.active_era, p).await
+        get_validator_data_from_db(db, chain_info.active_era, p).await
     })
+}
+
+fn get_nominator_info(chain: &'static str, db: Database) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+  warp::path("api")
+  .and(warp::path("v1"))
+  .and(warp::path("nominator"))
+  .and(warp::path("id"))
+  .and(warp::path::param())
+  .and(warp::path(chain))
+  .and(warp::path::end())
+  .and(with_db(db))
+  .and_then(|id: String, mut db: Database| async move {
+    let nominator = db.get_nominator_info(id).await;
+    if let Ok(nominator) = nominator {
+      Ok(warp::reply::with_status(
+        warp::reply::json(&nominator),
+        StatusCode::OK,
+      ))
+    } else {
+      Err(warp::reject::not_found())
+    }
+  })
 }
 
 fn with_db(
@@ -43,7 +65,7 @@ fn with_db(
     warp::any().map(move || db.clone())
 }
 
-async fn get_data_from_db(
+async fn get_validator_data_from_db(
     db: Database,
     era: u32,
     options: AllValidatorOptions,
@@ -59,5 +81,6 @@ pub fn routes(
     chain: &'static str,
     db: Database,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    get_all_validators(chain, db)
+    get_all_validators(chain, db.clone())
+    .or(get_nominator_info(chain, db))
 }
