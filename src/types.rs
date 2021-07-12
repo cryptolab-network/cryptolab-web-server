@@ -170,7 +170,7 @@ pub struct Identity {
     display: Option<String>,
     parent: Option<String>,
     sub: Option<String>,
-    isVerified: Option<bool>,
+    is_verified: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

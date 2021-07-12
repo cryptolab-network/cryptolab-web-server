@@ -273,6 +273,11 @@ impl Database {
                 "as": "data"
             },
         };
+        let match_command2 = doc! {
+            "$match": {
+                "data.identity.isVerified": true
+            },
+        };
         let lookup_command2 = doc! {
             "$lookup": {
                 "from": "unclaimedEraInfo",
@@ -295,18 +300,34 @@ impl Database {
         let limit_command = doc! {
             "$limit": options.size,
         };
-        self.do_get_validator_info(
-            array,
-            vec![
-                match_command,
-                lookup_command,
-                lookup_command2,
-                lookup_command3,
-                skip_command,
-                limit_command,
-            ],
-        )
-        .await
+        if options.has_verified_identity {
+            self.do_get_validator_info(
+                array,
+                vec![
+                    match_command,
+                    lookup_command,
+                    match_command2,
+                    lookup_command2,
+                    lookup_command3,
+                    skip_command,
+                    limit_command,
+                ],
+            )
+            .await
+        } else {
+            self.do_get_validator_info(
+                array,
+                vec![
+                    match_command,
+                    lookup_command,
+                    lookup_command2,
+                    lookup_command3,
+                    skip_command,
+                    limit_command,
+                ],
+            )
+            .await
+        }
     }
 
     pub async fn get_validator_info(
@@ -430,7 +451,10 @@ impl Database {
                     let average_apy = _data.as_document().unwrap().get("averageApy");
                     let slashes = doc.get("slashes");
                     let default_identity = bson!({
-                        "display": ""
+                        "display": "",
+                        "parent": "",
+                        "sub": "",
+                        "is_verified": false,
                     });
                     let nominators = doc.get_array("nominators").unwrap();
                     let mut _nominators = vec![];

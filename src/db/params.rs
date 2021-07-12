@@ -13,4 +13,5 @@ pub struct AllValidatorOptions {
     pub apy_max: f32,
     pub commission_min: f32,
     pub commission_max: f32,
+    pub has_verified_identity: bool,
 }

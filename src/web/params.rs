@@ -19,6 +19,7 @@ pub struct AllValidatorOptions {
     apy_max: Option<f32>,
     commission_min: Option<f32>,
     commission_max: Option<f32>,
+    has_verified_identity: Option<bool>,
 }
 
 impl AllValidatorOptions {
@@ -30,6 +31,7 @@ impl AllValidatorOptions {
             apy_max: Some(1.0),
             commission_min: Some(0.0),
             commission_max: Some(1.0),
+            has_verified_identity: Some(false)
         }
     }
 
@@ -57,6 +59,10 @@ impl AllValidatorOptions {
         self.commission_max.unwrap_or(1.0)
     }
 
+    pub fn has_verified_identity(&self) -> bool {
+        self.has_verified_identity.unwrap_or(false)
+    }
+
     pub fn to_db_all_validator_options(&self) -> super::super::db::params::AllValidatorOptions {
         super::super::db::params::AllValidatorOptions {
             size: self.size(),
@@ -65,6 +71,7 @@ impl AllValidatorOptions {
             apy_max: self.apy_max(),
             commission_min: self.commission_min(),
             commission_max: self.commission_max(),
+            has_verified_identity: self.has_verified_identity(),
         }
     }
 }
