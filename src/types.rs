@@ -165,8 +165,12 @@ pub struct ValidatorPrefs {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Identity {
     display: Option<String>,
+    parent: Option<String>,
+    sub: Option<String>,
+    isVerified: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
