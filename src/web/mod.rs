@@ -1,6 +1,8 @@
 use crate::cache_redis::Cache;
 use crate::staking_rewards_collector::SRCError;
 
+use self::params::InvalidParam;
+
 use super::db::Database;
 use warp::Filter;
 use warp::Rejection;
@@ -10,7 +12,6 @@ mod kusama;
 mod polkadot;
 mod cryptolab_api;
 mod params;
-use params::InvalidParam;
 use super::config::Config;
 
 impl Reject for SRCError {}
@@ -55,9 +56,9 @@ impl WebServer {
                     String::from("Data not found"),
                     StatusCode::NOT_FOUND,
                 ))
-            } else if let Some(InvalidParam) = error.find() {
+            } else if let Some(err) = error.find::<InvalidParam>() {
                 Ok(warp::reply::with_status(
-                    String::from("Invalid Parameters"),
+                    err.to_string(),
                     StatusCode::BAD_REQUEST,
                 ))
             } else {

@@ -1,5 +1,6 @@
 // use super::super::cache;
 use super::super::db::Database;
+use super::params::ErrorCode;
 use super::params::{AllValidatorOptions, InvalidParam};
 use std::{convert::Infallible};
 use warp::http::StatusCode;
@@ -8,16 +9,20 @@ use warp::{Filter, Rejection};
 fn validate_get_all_validators() -> impl Filter<Extract = (AllValidatorOptions,), Error = Rejection> + Copy {
   warp::filters::query::query().and_then(|params: AllValidatorOptions| async move {
     if !(0.0..=1.0).contains(&params.apy_max()) {
-      return Err(warp::reject::custom(InvalidParam));
+      return Err(warp::reject::custom(InvalidParam::new("apy_max must be between 0 ~ 1.", 
+      ErrorCode::InvalidApy)));
     }
     if !(0.0..=1.0).contains(&params.apy_min()) {
-      return Err(warp::reject::custom(InvalidParam));
+      return Err(warp::reject::custom(InvalidParam::new("apy_min must be between 0 ~ 1.",
+      ErrorCode::InvalidApy)));
     }
     if !(0.0..=1.0).contains(&params.commission_min()) {
-      return Err(warp::reject::custom(InvalidParam));
+      return Err(warp::reject::custom(InvalidParam::new("commission_min must be between 0 ~ 1.",
+      ErrorCode::InvalidCommission)));
     }
     if !(0.0..=1.0).contains(&params.commission_max()) {
-      return Err(warp::reject::custom(InvalidParam));
+      return Err(warp::reject::custom(InvalidParam::new("commission_max must be between 0 ~ 1.",
+      ErrorCode::InvalidCommission)));
     }
     Ok(params)
   })

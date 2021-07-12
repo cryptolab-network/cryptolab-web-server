@@ -1,8 +1,44 @@
+use std::fmt;
+use serde_json::json;
 use serde::Deserialize;
 use warp::reject;
 
+#[derive(Copy, Clone)]
+pub enum ErrorCode {
+    InvalidApy = -1000,
+    InvalidCommission = -1001,
+}
+
+impl ErrorCode {
+    pub fn to_int(err: &ErrorCode) -> i32 {
+        *err as i32
+    }
+}
+
 #[derive(Debug)]
-pub struct InvalidParam;
+pub struct InvalidParam {
+    pub message: String,
+    pub err_code: i32,
+}
+
+impl fmt::Display for InvalidParam {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let msg = json!({
+            "message": self.message,
+            "err_code": self.err_code,
+        });
+        write!(f, "{}", msg.to_string())
+    }
+}
+
+impl InvalidParam {
+    pub fn new(message: &str, err_code: ErrorCode) -> Self{
+        InvalidParam {
+            message: message.to_string(),
+            err_code: ErrorCode::to_int(&err_code),
+        }
+    }
+}
 
 impl reject::Reject for InvalidParam {}
 
