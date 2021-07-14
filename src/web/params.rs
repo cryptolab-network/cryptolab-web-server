@@ -10,8 +10,8 @@ pub enum ErrorCode {
 }
 
 impl ErrorCode {
-    pub fn to_int(err: &ErrorCode) -> i32 {
-        *err as i32
+    pub fn to_int(self) -> i32 {
+        self as i32
     }
 }
 
@@ -35,7 +35,7 @@ impl InvalidParam {
     pub fn new(message: &str, err_code: ErrorCode) -> Self{
         InvalidParam {
             message: message.to_string(),
-            err_code: ErrorCode::to_int(&err_code),
+            err_code: err_code.to_int(),
         }
     }
 }
