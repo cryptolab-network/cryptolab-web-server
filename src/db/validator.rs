@@ -72,79 +72,79 @@ impl Database {
           Ok(client) => {
               let db = client.database(&self.db_name);
               let mut cursor = db
-                  .collection("validator")
-                  .aggregate(
-                      vec![
-                          match_command,
-                          lookup_command,
-                          unwind_command,
-                          project_command,
-                          group_command,
-                      ],
-                      None,
-                  )
-                  .await
-                  .unwrap();
+                .collection("validator")
+                .aggregate(
+                    vec![
+                        match_command,
+                        lookup_command,
+                        unwind_command,
+                        project_command,
+                        group_command,
+                    ],
+                    None,
+                )
+                .await
+                .unwrap();
               if let Some(result) = cursor.next().await {
-                  let unwrapped = result.unwrap();
-                  let mut info: types::ValidatorNominationTrend =
-                      bson::from_bson(Bson::Document(unwrapped)).unwrap();
-                  let mut cursor2 = db
-                      .collection("nomination")
-                      .aggregate(
-                          vec![
-                              doc! {
-                                  "$match":{
-                                      "validator": &stash
-                                  },
-                              },
-                              doc! {
-                                  "$sort": {"era": -1}
-                              },
-                              doc! {
-                                  "$limit": 1
-                              },
-                              doc! {
-                                  "$lookup": {
-                                      "from": "nominator",
-                                      "localField": "nominators",
-                                      "foreignField": "address",
-                                      "as": "nominators",
-                                  }
-                              },
-                              doc! {
-                                  "$project": {
-                                      "era": 1,
-                                      "exposure": 1,
-                                      "commission": 1,
-                                      "apy": 1,
-                                      "validator": 1,
-                                      "nominatorCount": {
-                                          "$size": "$nominators"
-                                      },
-                                      "nominators": 1,
-                                  }
-                              },
-                          ],
-                          None,
-                      )
-                      .await
-                      .unwrap();
-                  if let Some(result2) = cursor2.next().await {
-                      let info2: types::NominationInfo =
-                          bson::from_bson(Bson::Document(result2.unwrap())).unwrap();
-                      let mut index: i32 = -1;
-                      for (i, era_info) in info.info.iter().enumerate() {
-                          if era_info.era == info2.era {
-                              index = i as i32;
-                          }
-                      }
-                      if index >= 0 {
-                          info.info[index as usize]
-                              .set_nominators(info2.nominators.unwrap_or_else(std::vec::Vec::new));
-                      }
-                  }
-                  return Ok(info);
+                let unwrapped = result.unwrap();
+                let mut info: types::ValidatorNominationTrend =
+                    bson::from_bson(Bson::Document(unwrapped)).unwrap();
+                let mut cursor2 = db
+                    .collection("nomination")
+                    .aggregate(
+                        vec![
+                            doc! {
+                                "$match":{
+                                    "validator": &stash
+                                },
+                            },
+                            doc! {
+                                "$sort": {"era": -1}
+                            },
+                            doc! {
+                                "$limit": 1
+                            },
+                            doc! {
+                                "$lookup": {
+                                    "from": "nominator",
+                                    "localField": "nominators",
+                                    "foreignField": "address",
+                                    "as": "nominators",
+                                }
+                            },
+                            doc! {
+                                "$project": {
+                                    "era": 1,
+                                    "exposure": 1,
+                                    "commission": 1,
+                                    "apy": 1,
+                                    "validator": 1,
+                                    "nominatorCount": {
+                                        "$size": "$nominators"
+                                    },
+                                    "nominators": 1,
+                                }
+                            },
+                        ],
+                        None,
+                    )
+                    .await
+                    .unwrap();
+                if let Some(result2) = cursor2.next().await {
+                    let info2: types::NominationInfo =
+                        bson::from_bson(Bson::Document(result2.unwrap())).unwrap();
+                    let mut index: i32 = -1;
+                    for (i, era_info) in info.info.iter().enumerate() {
+                        if era_info.era == info2.era {
+                            index = i as i32;
+                        }
+                    }
+                    if index >= 0 {
+                        info.info[index as usize]
+                            .set_nominators(info2.nominators.unwrap_or_else(std::vec::Vec::new));
+                    }
+                }
+                return Ok(info);
               }
               Err(DatabaseError {
                   message: format!("Failed to find validator with stash {}", &stash),
