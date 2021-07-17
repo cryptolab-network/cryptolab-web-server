@@ -2,36 +2,35 @@ name: Rust
 
 on:
   push:
-    branches: [ main, cryptolab-phase-2 ]
+    branches: [main, cryptolab-phase-2]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Build
-      run: cargo build --release
-    - name: Archive production artifacts
-      uses: actions/upload-artifact@v2
-      with:
-        name: cryptolab-web-server
-        path: |
-          target/release/cryptolab-backend
-    - name: Configure AWS credentials
+      - uses: actions/checkout@v2
+      - name: Build
+        run: cargo build --release
+      - name: Archive production artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: cryptolab-web-server
+          path: |
+            target/release/cryptolab-backend
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-central-1
-    - name: Upload artifacts to S3 with AWS CLI
+      - name: Upload artifacts to S3 with AWS CLI
         run: |
           aws s3 sync ./target/release s3://${{ secrets.S3_BUCKET }} --delete
-    - name: Create CodeDeploy Deployment
+      - name: Create CodeDeploy Deployment
         id: deploy
         run: |
           aws deploy create-deployment \
