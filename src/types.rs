@@ -257,7 +257,7 @@ pub struct NominationInfo {
     unclaimed_eras: Option<Vec<i32>>,
     #[serde(deserialize_with = "from_hex")]
     total: u128,
-    #[serde(deserialize_with = "from_optional_hex")]
+    #[serde(default, deserialize_with = "from_optional_hex")]
     self_stake: Option<u128>,
 }
 
