@@ -1,4 +1,3 @@
-use crate::cache;
 use crate::cache_redis::Cache;
 
 // use super::super::cache;
@@ -99,6 +98,34 @@ fn get_all_nominators(
   .map(move || warp::reply::json(&cache.get_nominators("KSM")))
 }
 
+fn get_1kv_validators(
+  chain: &'static str,
+  cache: Cache
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+{
+    warp::path("api")
+    .and(warp::path("v1"))
+    .and(warp::path("1kv"))
+    .and(warp::path("validators"))
+    .and(warp::path(chain))
+    .and(warp::path::end())
+    .map(move || warp::reply::json(&cache.get_1kv_info_detail("KSM")))
+}
+
+fn get_1kv_nominators(
+  chain: &'static str,
+  cache: Cache
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone
+{
+  warp::path("api")
+  .and(warp::path("v1"))
+  .and(warp::path("1kv"))
+  .and(warp::path("nominators"))
+  .and(warp::path(chain))
+  .and(warp::path::end())
+  .map(move || warp::reply::json(&cache.get_1kv_nominators("KSM")))
+}
+
 fn with_db(
     db: Database,
 ) -> impl Filter<Extract = (Database,), Error = std::convert::Infallible> + Clone {
@@ -124,6 +151,8 @@ pub fn routes(
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     get_all_validators(chain, db.clone())
     .or(get_nominator_info(chain, db.clone()))
-    .or(get_all_nominators(chain, cache))
-    .or(get_validator_history(chain, db.clone()))
+    .or(get_all_nominators(chain, cache.clone()))
+    .or(get_validator_history(chain, db))
+    .or(get_1kv_validators(chain, cache.clone()))
+    .or(get_1kv_nominators(chain, cache))
 }

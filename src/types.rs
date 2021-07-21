@@ -56,6 +56,8 @@ pub struct ValidatorInfo1kv {
     total_nominators: u32,
     staking_info: Option<StakingInfo>,
     nominated_at: String,
+    #[serde(deserialize_with = "from_optional_hex")]
+    self_stake: Option<u128>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -253,6 +255,10 @@ pub struct NominationInfo {
     commission: f32,
     apy: f32,
     unclaimed_eras: Option<Vec<i32>>,
+    #[serde(deserialize_with = "from_hex")]
+    total: u128,
+    #[serde(deserialize_with = "from_optional_hex")]
+    self_stake: Option<u128>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -267,6 +273,8 @@ pub struct NominationInfoSimple {
     unclaimed_eras: Option<Vec<i32>>,
     #[serde(deserialize_with = "from_hex")]
     total: u128,
+    #[serde(deserialize_with = "from_optional_hex")]
+    self_stake: Option<u128>,
 }
 
 impl NominationInfo {
@@ -349,6 +357,35 @@ where
         }
         _ => return Err(de::Error::custom("wrong type")),
     })
+}
+
+fn from_optional_hex<'de, D>(deserializer: D) -> Result<Option<u128>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let v = Value::deserialize(deserializer);
+    if let Ok(v) = v {
+        match v {
+            Value::String(s) => {
+                let mut result = Ok(0);
+                if s.len() > 3 {
+                    result = u128::from_str_radix(&s[2..], 16);
+                }
+                Ok(Some(result.map_err(de::Error::custom)?))
+            }
+            Value::Number(num) => {
+                Ok(Some(u128::from_str(num.to_string().as_str()).map_err(de::Error::custom)?))
+            }
+            a => {
+                println!("{:?}", a);
+                Err(de::Error::custom("wrong type"))
+            },
+        }
+    } else {
+        println!("{:?}", v);
+        Ok(Some(0))
+    }
+    
 }
 
 fn parse_stash_name<'de, D>(d: D) -> Result<String, D::Error>

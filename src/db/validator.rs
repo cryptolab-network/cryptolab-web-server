@@ -33,24 +33,26 @@ impl Database {
       };
 
       let project_command = doc! {
-          "$project": {
-              "id": 1,
-              "identity": 1,
-              "statusChange": 1,
-              "rewards": 1,
-              "averageApy": 1,
-              "stakerPoints": 1,
-              "info": {
-                  "era": 1,
-                  "exposure": 1,
-                  "commission": 1,
-                  "apy": 1,
-                  "validator": 1,
-                  "nominatorCount": {
-                      "$size": "$info.nominators"
-                  }
-              },
-          }
+        "$project": {
+            "id": 1,
+            "identity": 1,
+            "statusChange": 1,
+            "rewards": 1,
+            "averageApy": 1,
+            "stakerPoints": 1,
+            "info": {
+                "era": 1,
+                "exposure": 1,
+                "commission": 1,
+                "apy": 1,
+                "validator": 1,
+                "nominatorCount": {
+                    "$size": "$info.nominators"
+                },
+                "total": 1,
+                "selfStake": 1,
+            },
+        }
       };
 
       let group_command = doc! {
@@ -123,6 +125,8 @@ impl Database {
                                         "$size": "$nominators"
                                     },
                                     "nominators": 1,
+                                    "total": 1,
+                                    "selfStake": 1,
                                 }
                             },
                         ],
@@ -424,6 +428,7 @@ impl Database {
                           "exposure": doc.get("exposure").unwrap(),
                           "unclaimedEras": unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap(),
                           "total": doc.get("total").unwrap_or(&Bson::String("0x00".to_string())),
+                          "selfStake": doc.get("selfStake").unwrap_or(&Bson::String("0x00".to_string())),
                       },
                       "stakerPoints": staker_points.unwrap(),
                       "averageApy": average_apy.unwrap_or(&Bson::Int32(0)),
