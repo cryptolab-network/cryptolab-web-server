@@ -1,3 +1,6 @@
+use crate::cache;
+use crate::cache_redis::Cache;
+
 // use super::super::cache;
 use super::super::db::Database;
 use super::params::ErrorCode;
@@ -64,6 +67,38 @@ fn get_nominator_info(chain: &'static str, db: Database) -> impl Filter<Extract 
   })
 }
 
+fn get_validator_history(
+  chain: &'static str,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+  db: Database,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+  warp::path("api")
+  .and(warp::path("v1"))
+  .and(warp::path("validator"))
+  .and(with_db(db))
+  .and(warp::path::param())
+  .and(warp::path(chain))
+  .and(warp::path::end())
+  .and_then(|db: Database, stash: String| async move {
+      let validator = db.get_validator(stash).await;
+      match validator {
+          Ok(v) => Ok(warp::reply::json(&[v])),
+          Err(_) => Err(warp::reject::not_found()),
+      }
+  })
+}
+
+fn get_all_nominators(
+  chain: &'static str,
+  cache: Cache
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+  warp::path("api")
+  .and(warp::path("v1"))
+  .and(warp::path("nominators"))
+  .and(warp::path(chain))
+  .and(warp::path::end())
+  .map(move || warp::reply::json(&cache.get_nominators("KSM")))
+}
+
 fn with_db(
     db: Database,
 ) -> impl Filter<Extract = (Database,), Error = std::convert::Infallible> + Clone {
@@ -85,7 +120,10 @@ async fn get_validator_data_from_db(
 pub fn routes(
     chain: &'static str,
     db: Database,
+    cache: Cache
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     get_all_validators(chain, db.clone())
-    .or(get_nominator_info(chain, db))
+    .or(get_nominator_info(chain, db.clone()))
+    .or(get_all_nominators(chain, cache))
+    .or(get_validator_history(chain, db.clone()))
 }
