@@ -255,7 +255,7 @@ pub struct NominationInfo {
     commission: f32,
     apy: f32,
     unclaimed_eras: Option<Vec<i32>>,
-    #[serde(deserialize_with = "from_hex")]
+    #[serde(default, deserialize_with = "from_hex")]
     total: u128,
     #[serde(default, deserialize_with = "from_optional_hex")]
     self_stake: Option<u128>,
@@ -271,7 +271,7 @@ pub struct NominationInfoSimple {
     commission: f32,
     apy: f32,
     unclaimed_eras: Option<Vec<i32>>,
-    #[serde(deserialize_with = "from_hex")]
+    #[serde(default, deserialize_with = "from_hex")]
     total: u128,
     #[serde(deserialize_with = "from_optional_hex")]
     self_stake: Option<u128>,

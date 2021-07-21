@@ -95,7 +95,7 @@ fn get_all_nominators(
   .and(warp::path("nominators"))
   .and(warp::path(chain))
   .and(warp::path::end())
-  .map(move || warp::reply::json(&cache.get_nominators("KSM")))
+  .map(move || warp::reply::json(&cache.get_nominators(chain)))
 }
 
 fn get_1kv_validators(
@@ -109,7 +109,7 @@ fn get_1kv_validators(
     .and(warp::path("validators"))
     .and(warp::path(chain))
     .and(warp::path::end())
-    .map(move || warp::reply::json(&cache.get_1kv_info_detail("KSM")))
+    .map(move || warp::reply::json(&cache.get_1kv_info_detail(chain)))
 }
 
 fn get_1kv_nominators(
@@ -123,7 +123,7 @@ fn get_1kv_nominators(
   .and(warp::path("nominators"))
   .and(warp::path(chain))
   .and(warp::path::end())
-  .map(move || warp::reply::json(&cache.get_1kv_nominators("KSM")))
+  .map(move || warp::reply::json(&cache.get_1kv_nominators(chain)))
 }
 
 fn with_db(
