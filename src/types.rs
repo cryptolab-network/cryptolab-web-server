@@ -45,8 +45,19 @@ pub struct ValidatorDetailAll {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct Validity {
+    #[serde(rename="type")]
+    pub validity_type: String,
+    pub valid: bool,
+    pub details: String,
+    pub updated: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ValidatorInfo1kv {
-    aggregate: Aggregate,
+    #[serde(default)]
+    aggregate: Option<Aggregate>,
     rank: i32,
     inclusion: f32,
     name: String,
@@ -58,12 +69,15 @@ pub struct ValidatorInfo1kv {
     nominated_at: String,
     #[serde(deserialize_with = "from_optional_hex")]
     self_stake: Option<u128>,
+    valid: bool,
+    validity: Vec<Validity>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ValidatorInfo1kvSimple {
-    aggregate: Aggregate,
+    #[serde(default)]
+    aggregate: Option<Aggregate>,
     rank: u32,
     inclusion: f32,
     name: String,
@@ -95,6 +109,21 @@ pub struct Aggregate {
     rank: f32,
     unclaimed: f32,
     randomness: f32,
+}
+
+impl Default for Aggregate {
+    fn default() -> Self {
+        Aggregate {
+            total: 0.0,
+            aggregate: 0.0,
+            inclusion: 0.0,
+            discovered: 0.0,
+            nominated: 0.0,
+            rank: 0.0,
+            unclaimed: 0.0,
+            randomness: 0.0,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
