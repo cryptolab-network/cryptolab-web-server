@@ -1,4 +1,5 @@
 use crate::cache_redis::Cache;
+use crate::types::ValidatorNominationInfo;
 
 // use super::super::cache;
 use super::super::db::Database;
@@ -30,17 +31,18 @@ fn validate_get_all_validators() -> impl Filter<Extract = (AllValidatorOptions,)
   })
 }
 
-fn get_all_validators(chain: &'static str, db: Database) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+fn get_all_validators(chain: &'static str, db: Database, cache: Cache) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
     warp::path("api")
     .and(warp::path("v1"))
     .and(warp::path("validators"))
     .and(warp::path(chain))
     .and(warp::path::end())
     .and(with_db(db))
+    .and(with_cache(cache))
     .and(validate_get_all_validators())
-    .and_then(|db: Database, p: AllValidatorOptions| async move {
+    .and_then(move |db: Database, cache: Cache, p: AllValidatorOptions| async move {
         let chain_info = db.get_chain_info().await.unwrap();
-        get_validator_data_from_db(db, chain_info.active_era, p).await
+        get_validator_data_from_db(db, cache, chain.to_string(), chain_info.active_era, p).await
     })
 }
 
@@ -132,16 +134,45 @@ fn with_db(
     warp::any().map(move || db.clone())
 }
 
+fn with_cache(
+  cache: Cache,
+) -> impl Filter<Extract = (Cache,), Error = std::convert::Infallible> + Clone {
+  warp::any().map(move || cache.clone())
+}
+
 async fn get_validator_data_from_db(
     db: Database,
+    cache: Cache,
+    chain: String,
     era: u32,
     options: AllValidatorOptions,
 ) -> Result<warp::reply::WithStatus<warp::reply::Json>, Infallible> {
-    let result = db.get_all_validator_info_of_era(era, options.to_db_all_validator_options()).await;
-    Ok(warp::reply::with_status(
-        warp::reply::json(&result.unwrap()),
+    let result = db.get_all_validator_info_of_era(era, options.to_db_all_validator_options()).await.unwrap();
+    if options.has_joined_1kv() {
+      let one_kv = cache.get_1kv_info_detail(&chain);
+      let mut one_kv_nodes: Vec<ValidatorNominationInfo> = [].to_vec();
+      for v in result {
+        let mut is1kv = false;
+        for o in &one_kv.valid {
+            if o.stash == v.id {
+              is1kv = true;
+              break;
+            }
+        }
+        if is1kv {
+          one_kv_nodes.push(v);
+        }
+      }
+      Ok(warp::reply::with_status(
+        warp::reply::json(&one_kv_nodes),
         StatusCode::OK,
-    ))
+      ))
+    } else {
+      Ok(warp::reply::with_status(
+          warp::reply::json(&result),
+          StatusCode::OK,
+      ))
+    }
 }
 
 pub fn routes(
@@ -149,7 +180,7 @@ pub fn routes(
     db: Database,
     cache: Cache
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    get_all_validators(chain, db.clone())
+    get_all_validators(chain, db.clone(), cache.clone())
     .or(get_nominator_info(chain, db.clone()))
     .or(get_all_nominators(chain, cache.clone()))
     .or(get_validator_history(chain, db))

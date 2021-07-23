@@ -61,7 +61,7 @@ pub struct ValidatorInfo1kv {
     rank: i32,
     inclusion: f32,
     name: String,
-    stash: String,
+    pub stash: String,
     elected: bool,
     active_nominators: u32,
     total_nominators: u32,
@@ -208,7 +208,7 @@ pub struct Identity {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ValidatorNominationInfo {
-    id: String,
+    pub id: String,
     status_change: StatusChange,
     identity: Option<Identity>,
     info: NominationInfoSimple,

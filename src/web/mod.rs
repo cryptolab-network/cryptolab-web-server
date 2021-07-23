@@ -1,12 +1,7 @@
 use crate::cache_redis::Cache;
 use crate::staking_rewards_collector::SRCError;
-
-use self::params::InvalidParam;
-
 use super::db::Database;
 use warp::Filter;
-use warp::Rejection;
-use warp::hyper::StatusCode;
 use warp::reject::Reject;
 mod kusama;
 mod polkadot;
