@@ -15,6 +15,9 @@ pub struct Config {
     pub db_has_credential: bool,
     pub db_username: Option<String>,
     pub db_password: Option<String>,
+    pub db_has_tls: bool,
+    pub db_ca_file: Option<String>,
+    pub db_cert_key_file: Option<String>,
 
     pub new_cache_folder: String,
     pub new_cache_folder_polkadot: String,
@@ -80,5 +83,10 @@ fn read_env(mut config: Config) -> Config {
     config.db_password = Some(env::var("DB_PASSWORD").unwrap_or_else(|_| config.db_password.clone().unwrap()));
     config.db_port = str::parse::<u16>(&env::var("DB_PORT").unwrap_or_else(|_| config.db_port.to_string())).unwrap();
     config.db_username = Some(env::var("DB_USERNAME").unwrap_or_else(|_| config.db_username.clone().unwrap()));
+    let db_has_tls = str::parse::<bool>(&env::var("DB_HAS_CREDENTIAL")
+    .unwrap_or_else(|_| config.db_has_tls.to_string()));
+    config.db_has_tls = db_has_tls.unwrap();
+    config.db_cert_key_file = Some(env::var("DB_CERT_KEY_FILE").unwrap_or_else(|_| config.db_cert_key_file.clone().unwrap()));
+    config.db_ca_file = Some(env::var("DB_CA_FILE").unwrap_or_else(|_| config.db_ca_file.clone().unwrap()));
     config
 }

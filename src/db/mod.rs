@@ -1,4 +1,5 @@
 use super::config::Config;
+use mongodb::options::{Tls, TlsOptions, TlsOptionsBuilder};
 use mongodb::{options::ClientOptions, Client};
 use std::fmt;
 use std::{collections::HashMap, error::Error};
@@ -56,7 +57,14 @@ impl Database {
         let mut client_options = ClientOptions::parse(url.as_str()).await?;
         // Manually set an option.
         client_options.app_name = Some("cryptolab".to_string());
-
+        if Config::current().db_has_tls {
+            let tls_options = TlsOptions::builder()
+                .ca_file_path(Config::current().db_ca_file.clone())
+                .cert_key_file_path(Config::current().db_cert_key_file.clone())
+                .allow_invalid_certificates(true)
+                .build();
+            client_options.tls = Some(Tls::Enabled(tls_options));
+        }
         // Get a handle to the deployment.
         self.client = Some(Client::with_options(client_options)?);
         Ok(())
