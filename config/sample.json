@@ -6,6 +6,9 @@
   "db_has_credential": false,
   "db_username": "",
   "db_password": "",
+  "db_has_tls": false,
+  "db_ca_file": "",
+  "db_cert_key_file": "",
 
   "port": 3030,
   "cors_url": ["http://127.0.0.1:3030", "http://localhost:3030", "http://127.0.0.1:8080"],
