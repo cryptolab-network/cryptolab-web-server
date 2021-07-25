@@ -42,7 +42,8 @@ fn get_all_validators(chain: &'static str, db: Database, cache: Cache) -> impl F
     .and(validate_get_all_validators())
     .and_then(move |db: Database, cache: Cache, p: AllValidatorOptions| async move {
         let chain_info = db.get_chain_info().await.unwrap();
-        get_validator_data_from_db(db, cache, chain.to_string(), chain_info.active_era, p).await
+        let validators = get_validator_data_from_db(db, cache, chain.to_string(), chain_info.active_era, p).await;
+        validators
     })
 }
 
@@ -147,7 +148,10 @@ async fn get_validator_data_from_db(
     era: u32,
     options: AllValidatorOptions,
 ) -> Result<warp::reply::WithStatus<warp::reply::Json>, Infallible> {
-    let result = db.get_all_validator_info_of_era(era, options.to_db_all_validator_options()).await.unwrap();
+    let mut result = db.get_all_validator_info_of_era(era, options.to_db_all_validator_options()).await.unwrap();
+    if result.is_empty() {
+      result = db.get_all_validator_info_of_era(era - 1, options.to_db_all_validator_options()).await.unwrap();
+    }
     if options.has_joined_1kv() {
       let one_kv = cache.get_1kv_info_detail(&chain);
       let mut one_kv_nodes: Vec<ValidatorNominationInfo> = [].to_vec();
