@@ -14,9 +14,10 @@ impl Database {
             let db = client.database(&self.db_name);
             match db.collection("chainInfo").find_one(None, None).await {
                 Ok(cursor) => Ok(bson::from_bson(Bson::Document(cursor.unwrap())).unwrap()),
-                Err(_) => Err(DatabaseError {
-                    message: "Get data from DB failed".to_string(),
-                }),
+                Err(e) => {
+                    println!("{:?}", e);
+                    Err(DatabaseError { message: "Get data from DB failed".to_string()}
+                )},
             }
         }
         Err(e) => {
