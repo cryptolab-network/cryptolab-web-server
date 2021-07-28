@@ -36,7 +36,7 @@ jobs:
         id: deploy
         run: |
           aws deploy create-deployment \
-            --application-name cryptolab-backend \
+            --application-name cryptolab-staging \
             --deployment-group-name backend-group \
             --file-exists-behavior OVERWRITE \
             --github-location repository=${{ github.repository }},commitId=${{ github.sha }}
