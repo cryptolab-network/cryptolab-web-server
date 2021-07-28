@@ -42,8 +42,10 @@ impl WebServer {
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         kusama::routes(self.kusama_db.clone(), self.cache.clone())
         .or(polkadot::routes(self.polkadot_db.clone(), self.cache.clone()))
-        .or(cryptolab_api::routes("KSM", self.kusama_db.clone(), self.cache.clone()))
-        .or(cryptolab_api::routes("DOT", self.polkadot_db.clone(), self.cache.clone()))
+        .or(cryptolab_api::routes("KSM", self.kusama_db.clone(), self.cache.clone(),
+        Config::current().staking_rewards_collector_dir.to_string()))
+        .or(cryptolab_api::routes("DOT", self.polkadot_db.clone(), self.cache.clone(),
+        Config::current().staking_rewards_collector_dir.to_string()))
         // .recover(|error: Rejection| async move {
         //     // Do prettier error reporting for the default error here.
         //     if error.is_not_found() {

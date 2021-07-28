@@ -1,5 +1,5 @@
 use super::config::Config;
-use mongodb::options::{Tls, TlsOptions, TlsOptionsBuilder};
+use mongodb::options::{Tls, TlsOptions};
 use mongodb::{options::ClientOptions, Client};
 use std::fmt;
 use std::{collections::HashMap, error::Error};

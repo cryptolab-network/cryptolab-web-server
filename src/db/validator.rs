@@ -445,7 +445,7 @@ impl Database {
                           output.insert("slashes", slashes);
                       },
                       None => {
-                          output.insert("slashes", bson! (null));
+                          output.insert("slashes", bson! ([]));
                       }
                   }
                   let info: ValidatorNominationInfo =

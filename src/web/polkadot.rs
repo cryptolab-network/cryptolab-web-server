@@ -192,7 +192,6 @@ fn get_stash_rewards_collector(src_path: String) -> impl Filter<Extract = impl w
     .and(warp::path::end())
     .and(warp::query::<StakingRewardsOptions>())
     .and_then(|stash: String, src_path: String, p: StakingRewardsOptions| async move {
-        debug!("{:?}", p);
         let start = "2020-01-01".to_string();
         let end = chrono::Utc::now().format("%Y-%m-%d").to_string();
         let currency = "USD".to_string();

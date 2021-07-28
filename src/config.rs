@@ -96,9 +96,16 @@ fn read_env(mut config: Config) -> Config {
         &env::var("DB_HAS_TLS").unwrap_or_else(|_| config.db_has_tls.to_string()),
     );
     config.db_has_tls = db_has_tls.unwrap();
-    config.db_cert_key_file = Some(
+    let db_cert_key_file = Some(
         env::var("DB_CERT_KEY_FILE").unwrap_or_else(|_| config.db_cert_key_file.clone().unwrap()),
     );
+    if db_cert_key_file.is_some() && db_cert_key_file.unwrap().is_empty() {
+        config.db_cert_key_file = None;
+    } else {
+        config.db_cert_key_file = Some(
+            env::var("DB_CERT_KEY_FILE").unwrap_or_else(|_| config.db_cert_key_file.clone().unwrap()),
+        );
+    }
     config.db_ca_file =
         Some(env::var("DB_CA_FILE").unwrap_or_else(|_| config.db_ca_file.clone().unwrap()));
     config
