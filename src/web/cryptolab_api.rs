@@ -84,7 +84,7 @@ fn get_nominator_info(chain: &'static str, db: Database) -> impl Filter<Extract 
 }
 
 fn get_validator_history(
-  chain: &'static str,                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+  chain: &'static str,
   db: Database,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
   warp::path("api")
@@ -248,6 +248,27 @@ fn get_stash_rewards_collector_json(src_path: String) -> impl Filter<Extract = i
       })
 }
 
+fn get_validator_unclaimed_eras(
+  chain: &'static str,
+  db: Database,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+  warp::path("api")
+  .and(warp::path("v1"))
+  .and(warp::path("validator"))
+  .and(with_db(db))
+  .and(warp::path::param())
+  .and(warp::path("unclaimedEras"))
+  .and(warp::path(chain))
+  .and(warp::path::end())
+  .and_then(|db: Database, stash: String| async move {
+      let validator = db.get_validator_unclaimed_eras(stash).await;
+      match validator {
+          Ok(v) => Ok(warp::reply::json(&v)),
+          Err(_) => Err(warp::reject::not_found()),
+      }
+  })
+}
+
 fn with_db(
     db: Database,
 ) -> impl Filter<Extract = (Database,), Error = std::convert::Infallible> + Clone {
@@ -356,10 +377,11 @@ pub fn routes(
     .or(get_nominator_info(chain, db.clone()))
     .or(get_all_nominators(chain, cache.clone()))
     .or(get_nominated_validators(chain, db.clone(), cache.clone()))
-    .or(get_validator_history(chain, db))
+    .or(get_validator_history(chain, db.clone()))
     .or(get_1kv_validators(chain, cache.clone()))
     .or(get_1kv_nominators(chain, cache))
     .or(get_stash_rewards_collector(src_path.clone()))
     .or(get_stash_rewards_collector_csv(src_path.clone()))
     .or(get_stash_rewards_collector_json(src_path))
+    .or(get_validator_unclaimed_eras(chain, db))
 }
