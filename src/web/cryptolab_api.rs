@@ -269,6 +269,27 @@ fn get_validator_unclaimed_eras(
   })
 }
 
+fn get_validator_slashes(
+  chain: &'static str,
+  db: Database,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+  warp::path("api")
+  .and(warp::path("v1"))
+  .and(warp::path("validator"))
+  .and(with_db(db))
+  .and(warp::path::param())
+  .and(warp::path("slashes"))
+  .and(warp::path(chain))
+  .and(warp::path::end())
+  .and_then(|db: Database, stash: String| async move {
+      let validator = db.get_validator_slashes(stash).await;
+      match validator {
+          Ok(v) => Ok(warp::reply::json(&v)),
+          Err(_) => Err(warp::reject::not_found()),
+      }
+  })
+}
+
 fn with_db(
     db: Database,
 ) -> impl Filter<Extract = (Database,), Error = std::convert::Infallible> + Clone {
@@ -383,5 +404,6 @@ pub fn routes(
     .or(get_stash_rewards_collector(src_path.clone()))
     .or(get_stash_rewards_collector_csv(src_path.clone()))
     .or(get_stash_rewards_collector_json(src_path))
-    .or(get_validator_unclaimed_eras(chain, db))
+    .or(get_validator_unclaimed_eras(chain, db.clone()))
+    .or(get_validator_slashes(chain, db))
 }

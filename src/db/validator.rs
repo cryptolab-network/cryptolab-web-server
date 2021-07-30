@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use mongodb::bson::{self, Bson, Document, doc, bson};
 
-use crate::types::{self, ValidatorNominationInfo};
+use crate::types::{self, ValidatorNominationInfo, ValidatorSlash};
 use log::error;
 use super::{Database, DatabaseError, params::AllValidatorOptions};
 
@@ -197,6 +197,41 @@ impl Database {
           }
       }
   }
+
+  pub async fn get_validator_slashes(
+    &self,
+    stash: String,
+) -> Result<Vec<ValidatorSlash>, DatabaseError> {
+    let mut array = Vec::new();
+    let match_command = doc! {
+        "$match":{
+            "address": stash
+        },
+    };
+
+    match self.client.as_ref().ok_or(DatabaseError {
+        message: "Mongodb client is not working as expected.".to_string(),
+    }) {
+        Ok(client) => {
+            let db = client.database(&self.db_name);
+            let mut cursor = db
+                .collection("validatorSlash")
+                .aggregate(vec![match_command], None)
+                .await
+                .unwrap();
+            while let Some(result) = cursor.next().await {
+                let doc = result.unwrap();
+                let slash: ValidatorSlash = bson::from_bson(Bson::Document(doc)).unwrap();
+                array.push(slash);
+            }
+            Ok(array)
+        }
+        Err(e) => {
+            error!("{}", e);
+            Err(e)
+        }
+    }
+}
 
   pub async fn get_all_validator_info_of_era(
       &self,
