@@ -7,6 +7,7 @@ use warp::reject;
 pub enum ErrorCode {
     InvalidApy = -1000,
     InvalidCommission = -1001,
+    OperationFailed = -2000,
 }
 
 impl ErrorCode {
@@ -40,7 +41,33 @@ impl InvalidParam {
     }
 }
 
+#[derive(Debug)]
+pub struct OperationFailed {
+    pub message: String,
+    pub err_code: i32,
+}
+
+impl fmt::Display for OperationFailed {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let msg = json!({
+            "message": self.message,
+            "err_code": self.err_code,
+        });
+        write!(f, "{}", msg.to_string())
+    }
+}
+
+impl OperationFailed {
+    pub fn new(message: &str, err_code: ErrorCode) -> Self {
+        OperationFailed {
+            message: message.to_string(),
+            err_code: err_code.to_int(),
+        }
+    }
+}
+
 impl reject::Reject for InvalidParam {}
+impl reject::Reject for OperationFailed {}
 
 #[derive(Deserialize)]
 pub struct ValidDetailOptions {
@@ -117,3 +144,4 @@ impl AllValidatorOptions {
         }
     }
 }
+

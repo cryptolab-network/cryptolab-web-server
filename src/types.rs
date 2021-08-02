@@ -430,3 +430,19 @@ where
 {
     Deserialize::deserialize(d).map(|x: Option<_>| x.unwrap_or(false))
 }
+
+
+#[derive(Deserialize)]
+pub enum NominationStrategy {
+    Default = 0,
+    LowRisk = 1,
+    HighApy = 2,
+}
+
+#[derive(Deserialize)]
+pub struct NominationOptions {
+    pub stash: String,
+    pub validators: Vec<String>,
+    pub amount: u128,
+    pub strategy: u32,
+} 

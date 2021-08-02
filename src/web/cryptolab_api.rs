@@ -1,13 +1,14 @@
 use crate::cache_redis::Cache;
 use serde::Deserialize;
+use serde::de::DeserializeOwned;
 use crate::staking_rewards_collector::StakingRewardsCollector;
 use crate::staking_rewards_collector::{StakingRewardsAddress, StakingRewardsReport};
-use crate::types::ValidatorNominationInfo;
+use crate::types::{NominationOptions, ValidatorNominationInfo};
 use crate::web::Invalid;
 
 // use super::super::cache;
 use super::super::db::Database;
-use super::params::ErrorCode;
+use super::params::{ErrorCode, OperationFailed};
 use super::params::{AllValidatorOptions, InvalidParam};
 use std::{convert::Infallible};
 use log::{debug, error};
@@ -388,6 +389,40 @@ fn get_nominated_validators(
   })
 }
 
+fn json_body<T: DeserializeOwned + Send>() -> impl Filter<Extract = (T,), Error = warp::Rejection> + Clone {
+  // When accepting a body, we want a JSON body
+  // (and to reject huge payloads)...
+  warp::body::content_length_limit(1024 * 16).and(warp::body::json())
+}
+
+fn post_nominated_records(
+  chain: &'static str,
+  db: Database,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+  warp::post()
+  .and(warp::path("api"))
+  .and(warp::path("v1"))
+  .and(warp::path("nominate"))
+  .and(with_db(db))
+  .and(json_body::<NominationOptions>())
+  .and(warp::path(chain))
+  .and(warp::path::end())
+  .and_then(move |db: Database, options: NominationOptions| async move {
+    let result = db.insert_nomination_action(options).await;
+    if result.is_ok() {
+      Ok(warp::reply::with_status(
+        "",
+        StatusCode::OK,
+      ))
+    } else {
+      let err = result.err().unwrap();
+      Err(warp::reject::custom(
+        OperationFailed::new(&err.to_string(), ErrorCode::OperationFailed)
+      ))
+    }
+  })
+}
+
 pub fn routes(
     chain: &'static str,
     db: Database,
@@ -405,5 +440,6 @@ pub fn routes(
     .or(get_stash_rewards_collector_csv(src_path.clone()))
     .or(get_stash_rewards_collector_json(src_path))
     .or(get_validator_unclaimed_eras(chain, db.clone()))
-    .or(get_validator_slashes(chain, db))
+    .or(get_validator_slashes(chain, db.clone()))
+    .or(post_nominated_records(chain, db))
 }

@@ -81,7 +81,7 @@ impl WebServer {
                 "Access-Control-Request-Headers",
                 "Content-Type",
             ])
-            .allow_methods(&[warp::http::Method::GET, warp::http::Method::OPTIONS]);
+            .allow_methods(&[warp::http::Method::GET, warp::http::Method::POST, warp::http::Method::OPTIONS]);
         let routes = warp::fs::dir("./www/static");
         let tool_routes = warp::path("tools").and(warp::fs::dir("./www/static"));
         let validator_status_routes = warp::path("tools").and(warp::path("validatorStatus")).and(warp::fs::dir("./www/static"));
