@@ -17,6 +17,7 @@ impl Reject for Invalid {}
 pub struct WebServerOptions {
     pub kusama_db: Database,
     pub polkadot_db: Database,
+    pub westend_db: Option<Database>,
     pub cache: Cache,
 }
 
@@ -24,6 +25,7 @@ pub struct WebServer {
     port: u16,
     kusama_db: Database,
     polkadot_db: Database,
+    westend_db: Option<Database>,
     cache: Cache,
 }
 
@@ -33,6 +35,7 @@ impl WebServer {
             port,
             kusama_db: options.kusama_db,
             polkadot_db: options.polkadot_db,
+            westend_db: options.westend_db,
             cache: options.cache,
         }
     }
@@ -46,25 +49,8 @@ impl WebServer {
         Config::current().staking_rewards_collector_dir.to_string()))
         .or(cryptolab_api::routes("DOT", self.polkadot_db.clone(), self.cache.clone(),
         Config::current().staking_rewards_collector_dir.to_string()))
-        // .recover(|error: Rejection| async move {
-        //     // Do prettier error reporting for the default error here.
-        //     if error.is_not_found() {
-        //         Ok(warp::reply::with_status(
-        //             String::from("Data not found"),
-        //             StatusCode::NOT_FOUND,
-        //         ))
-        //     } else if let Some(err) = error.find::<InvalidParam>() {
-        //         Ok(warp::reply::with_status(
-        //             err.to_string(),
-        //             StatusCode::BAD_REQUEST,
-        //         ))
-        //     } else {
-        //         Ok(warp::reply::with_status(
-        //             String::from("Internal error"),
-        //             StatusCode::INTERNAL_SERVER_ERROR,
-        //         ))
-        //     }
-        // })
+        .or(cryptolab_api::routes("WND", self.westend_db.clone().unwrap(), self.cache.clone(),
+        Config::current().staking_rewards_collector_dir.to_string()))
     }
 
     pub async fn start(&self) {

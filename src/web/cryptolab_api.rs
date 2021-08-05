@@ -429,7 +429,8 @@ pub fn routes(
     cache: Cache,
     src_path: String
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    get_all_validators(chain, db.clone(), cache.clone())
+    post_nominated_records(chain, db.clone())
+    .or(get_all_validators(chain, db.clone(), cache.clone()))
     .or(get_nominator_info(chain, db.clone()))
     .or(get_all_nominators(chain, cache.clone()))
     .or(get_nominated_validators(chain, db.clone(), cache.clone()))
@@ -441,5 +442,4 @@ pub fn routes(
     .or(get_stash_rewards_collector_json(src_path))
     .or(get_validator_unclaimed_eras(chain, db.clone()))
     .or(get_validator_slashes(chain, db.clone()))
-    .or(post_nominated_records(chain, db))
 }

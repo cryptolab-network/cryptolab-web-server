@@ -1,5 +1,5 @@
 use futures::StreamExt;
-use mongodb::bson::{self, doc};
+use mongodb::bson::{self, Document, doc};
 
 use crate::types::NominatorNomination;
 
@@ -40,7 +40,7 @@ impl Database {
             Ok(client) => {
                 let db = client.database(&self.db_name);
                 let mut cursor = db
-                    .collection("nominator")
+                    .collection::<Document>("nominator")
                     .aggregate(vec![match_command], None)
                     .await
                     .unwrap();

@@ -74,7 +74,7 @@ impl Database {
           Ok(client) => {
               let db = client.database(&self.db_name);
               let mut cursor = db
-                .collection("validator")
+                .collection::<Document>("validator")
                 .aggregate(
                     vec![
                         match_command,
@@ -92,7 +92,7 @@ impl Database {
                 let mut info: types::ValidatorNominationTrend =
                     bson::from_bson(Bson::Document(unwrapped)).unwrap();
                 let mut cursor2 = db
-                    .collection("nomination")
+                    .collection::<Document>("nomination")
                     .aggregate(
                         vec![
                             doc! {
@@ -178,7 +178,7 @@ impl Database {
           Ok(client) => {
               let db = client.database(&self.db_name);
               let mut cursor = db
-                  .collection("unclaimedEraInfo")
+                  .collection::<Document>("unclaimedEraInfo")
                   .aggregate(vec![match_command], None)
                   .await
                   .unwrap();
@@ -215,7 +215,7 @@ impl Database {
         Ok(client) => {
             let db = client.database(&self.db_name);
             let mut cursor = db
-                .collection("validatorSlash")
+                .collection::<Document>("validatorSlash")
                 .aggregate(vec![match_command], None)
                 .await
                 .unwrap();
@@ -411,7 +411,7 @@ impl Database {
           Ok(client) => {
               let db = client.database(&self.db_name);
               let mut cursor = db
-                  .collection("nomination")
+                  .collection::<Document>("nomination")
                   .aggregate(pipeline, None)
                   .await
                   .unwrap();
@@ -449,25 +449,46 @@ impl Database {
                           _nominators.push(n.clone());
                       }
                   }
-
-                  let mut output = doc! {
-                      "id": id.unwrap(),
-                      "statusChange": status_change.unwrap(),
-                      "identity": identity.unwrap_or(&default_identity),
-                      "info": {
-                          "nominators": &_nominators,
-                          "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
-                          "era": doc.get("era").unwrap(),
-                          "commission": doc.get("commission").unwrap(),
-                          "apy": doc.get("apy").unwrap(),
-                          "exposure": doc.get("exposure").unwrap(),
-                          "unclaimedEras": unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap(),
-                          "total": doc.get("total").unwrap_or(&Bson::String("0x00".to_string())),
-                          "selfStake": doc.get("selfStake").unwrap_or(&Bson::String("0x00".to_string())),
-                      },
-                      "stakerPoints": staker_points.unwrap(),
-                      "averageApy": average_apy.unwrap_or(&Bson::Int32(0)),
-                  };
+                  let mut output: Document;
+                  if !unclaimed_era_infos.is_empty() {
+                    output = doc! {
+                        "id": id.unwrap(),
+                        "statusChange": status_change.unwrap(),
+                        "identity": identity.unwrap_or(&default_identity),
+                        "info": {
+                            "nominators": &_nominators,
+                            "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
+                            "era": doc.get("era").unwrap(),
+                            "commission": doc.get("commission").unwrap(),
+                            "apy": doc.get("apy").unwrap(),
+                            "exposure": doc.get("exposure").unwrap(),
+                            "unclaimedEras": unclaimed_era_infos[0].as_document().unwrap().get_array("eras").unwrap(),
+                            "total": doc.get("total").unwrap_or(&Bson::String("0x00".to_string())),
+                            "selfStake": doc.get("selfStake").unwrap_or(&Bson::String("0x00".to_string())),
+                        },
+                        "stakerPoints": staker_points.unwrap(),
+                        "averageApy": average_apy.unwrap_or(&Bson::Int32(0)),
+                    };
+                  } else {
+                    output = doc! {
+                        "id": id.unwrap(),
+                        "statusChange": status_change.unwrap(),
+                        "identity": identity.unwrap_or(&default_identity),
+                        "info": {
+                            "nominators": &_nominators,
+                            "nominatorCount": doc.get_array("nominators").unwrap().len() as u32,
+                            "era": doc.get("era").unwrap(),
+                            "commission": doc.get("commission").unwrap(),
+                            "apy": doc.get("apy").unwrap(),
+                            "exposure": doc.get("exposure").unwrap(),
+                            "unclaimedEras": [],
+                            "total": doc.get("total").unwrap_or(&Bson::String("0x00".to_string())),
+                            "selfStake": doc.get("selfStake").unwrap_or(&Bson::String("0x00".to_string())),
+                        },
+                        "stakerPoints": staker_points.unwrap(),
+                        "averageApy": average_apy.unwrap_or(&Bson::Int32(0)),
+                    };
+                  }
                   let info = output.get_document_mut("info").unwrap();
                   if unclaimed_era_infos.is_empty() {
                       info.insert("unclaimedEras", bson! ([]));

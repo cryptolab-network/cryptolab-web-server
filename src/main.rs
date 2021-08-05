@@ -41,14 +41,31 @@ async fn main() {
                 Config::current().polkadot_db_name.as_str(),
             );
             let _ = polkadot_db.connect().await;
-            let options = WebServerOptions {
-                kusama_db,
-                polkadot_db,
-                cache: Cache{},
-            };
-
-            let server = WebServer::new(Config::current().port, options);
-            server.start().await;
+            if Config::current().support_westend {
+                let mut westend_db = Database::new(
+                    mongo_ip.clone(),
+                    Config::current().db_port,
+                    Config::current().westend_db_name.as_str(),
+                );
+                let _ = westend_db.connect().await;
+                let options = WebServerOptions {
+                    kusama_db,
+                    polkadot_db,
+                    westend_db: Some(westend_db),
+                    cache: Cache{},
+                };
+                let server = WebServer::new(Config::current().port, options);
+                server.start().await;
+            } else {
+                let options = WebServerOptions {
+                    kusama_db,
+                    polkadot_db,
+                    westend_db: None,
+                    cache: Cache{},
+                };
+                let server = WebServer::new(Config::current().port, options);
+                server.start().await;
+            }
         }
         Err(_) => panic!("Failed to connect to the Kusama Database"),
     }

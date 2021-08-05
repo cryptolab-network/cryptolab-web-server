@@ -1,7 +1,7 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use futures::StreamExt;
 use log::error;
-use mongodb::bson::doc;
+use mongodb::bson::{Document, doc};
 use crate::types;
 use super::{Database, DatabaseError};
 
@@ -23,7 +23,7 @@ async fn get_price_of_day(&self, timestamp: i64) -> Result<types::CoinPrice, Dat
         Ok(client) => {
             let db = client.database(&self.db_name);
             let mut cursor = db
-                .collection("price")
+                .collection::<Document>("price")
                 .find(doc! {"timestamp": timestamp}, None)
                 .await
                 .unwrap();
@@ -67,7 +67,7 @@ pub async fn get_stash_reward(
         Ok(client) => {
             let db = client.database(&self.db_name);
             let mut cursor = db
-                .collection("stashInfo")
+                .collection::<Document>("stashInfo")
                 .find(doc! {"stash": stash}, None)
                 .await
                 .unwrap();

@@ -3,6 +3,7 @@
   "db_port": 27017,
   "kusama_db_name": "kusama",
   "polkadot_db_name": "polkadot",
+  "westend_db_name": "westend",
   "db_has_credential": false,
   "db_username": "",
   "db_password": "",
@@ -20,5 +21,6 @@
   "serve_www": true,
 
   "redis": "192.168.2.116",
-  "redis_port": 6379
+  "redis_port": 6379,
+  "support_westend": true
 }

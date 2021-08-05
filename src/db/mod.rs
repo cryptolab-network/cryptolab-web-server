@@ -2,6 +2,7 @@ use super::config::Config;
 use mongodb::options::{Tls, TlsOptions};
 use mongodb::{options::ClientOptions, Client};
 use std::fmt;
+use std::path::PathBuf;
 use std::{collections::HashMap, error::Error};
 pub(crate) mod params;
 mod nominator;
@@ -58,10 +59,18 @@ impl Database {
         let mut client_options = ClientOptions::parse(url.as_str()).await?;
         // Manually set an option.
         client_options.app_name = Some("cryptolab".to_string());
+        let mut ca_file_path: Option<PathBuf> = None;
+        if Config::current().db_ca_file.clone().is_some() {
+            ca_file_path = Some(PathBuf::from(Config::current().db_ca_file.clone().unwrap()));
+        }
+        let mut db_cert_file_path: Option<PathBuf> = None;
+        if Config::current().db_cert_key_file.clone().is_some() {
+            db_cert_file_path = Some(PathBuf::from(Config::current().db_cert_key_file.clone().unwrap()));
+        }
         if Config::current().db_has_tls {
             let tls_options = TlsOptions::builder()
-                .ca_file_path(Config::current().db_ca_file.clone())
-                .cert_key_file_path(Config::current().db_cert_key_file.clone())
+                .ca_file_path(ca_file_path)
+                .cert_key_file_path(db_cert_file_path)
                 .allow_invalid_certificates(true)
                 .build();
             client_options.tls = Some(Tls::Enabled(tls_options));

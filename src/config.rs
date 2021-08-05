@@ -10,6 +10,7 @@ pub struct Config {
     pub db_port: u16,
     pub kusama_db_name: String,
     pub polkadot_db_name: String,
+    pub westend_db_name: String,
     pub port: u16,
     pub cors_url: Vec<String>,
     pub db_has_credential: bool,
@@ -27,6 +28,8 @@ pub struct Config {
 
     pub staking_rewards_collector_dir: String,
     pub serve_www: Option<bool>,
+
+    pub support_westend: bool,
 }
 
 impl Config {
@@ -63,6 +66,7 @@ fn read_config(path: String) -> Result<Config, Box<dyn Error>> {
 fn read_env(mut config: Config) -> Config {
     config.kusama_db_name = env::var("KUSAMA_DB_NAME").unwrap_or(config.kusama_db_name);
     config.polkadot_db_name = env::var("POLKADOT_DB_NAME").unwrap_or(config.polkadot_db_name);
+    config.westend_db_name = env::var("WESTEND_DB_NAME").unwrap_or(config.westend_db_name);
     config.port =
         str::parse::<u16>(&env::var("PORT").unwrap_or_else(|_| config.port.to_string())).unwrap();
     config.redis = env::var("REDIS").unwrap_or(config.redis);
@@ -108,5 +112,8 @@ fn read_env(mut config: Config) -> Config {
     }
     config.db_ca_file =
         Some(env::var("DB_CA_FILE").unwrap_or_else(|_| config.db_ca_file.clone().unwrap()));
+    let support_westend = str::parse::<bool>(
+        &env::var("SUPPORT_WESTEND").unwrap_or_else(|_| config.support_westend.to_string()));
+    config.support_westend = support_westend.unwrap();
     config
 }
