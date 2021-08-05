@@ -1,7 +1,8 @@
 use crate::cache_redis::Cache;
 use crate::staking_rewards_collector::SRCError;
 use super::db::Database;
-use warp::Filter;
+
+use warp::{Filter};
 use warp::reject::Reject;
 mod kusama;
 mod polkadot;
@@ -45,12 +46,14 @@ impl WebServer {
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         kusama::routes(self.kusama_db.clone(), self.cache.clone())
         .or(polkadot::routes(self.polkadot_db.clone(), self.cache.clone()))
-        .or(cryptolab_api::routes("KSM", self.kusama_db.clone(), self.cache.clone(),
+        .or(cryptolab_api::get_routes("KSM", self.kusama_db.clone(), self.cache.clone(),
         Config::current().staking_rewards_collector_dir.to_string()))
-        .or(cryptolab_api::routes("DOT", self.polkadot_db.clone(), self.cache.clone(),
+        .or(cryptolab_api::get_routes("DOT", self.polkadot_db.clone(), self.cache.clone(),
         Config::current().staking_rewards_collector_dir.to_string()))
-        .or(cryptolab_api::routes("WND", self.westend_db.clone().unwrap(), self.cache.clone(),
+        .or(cryptolab_api::get_routes("WND", self.westend_db.clone().unwrap(), self.cache.clone(),
         Config::current().staking_rewards_collector_dir.to_string()))
+        .or(cryptolab_api::post_routes("KSM", self.kusama_db.clone()))
+        .or(cryptolab_api::post_routes("DOT", self.polkadot_db.clone()))
     }
 
     pub async fn start(&self) {

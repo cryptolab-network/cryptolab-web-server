@@ -13,7 +13,7 @@ use super::params::{AllValidatorOptions, InvalidParam};
 use std::{convert::Infallible};
 use log::{debug, error};
 use warp::http::StatusCode;
-use warp::{Filter, Rejection};
+use warp::{Filter, Rejection, post};
 
 #[derive(Deserialize)]
 struct StakingRewardsOptions {
@@ -399,14 +399,14 @@ fn post_nominated_records(
   chain: &'static str,
   db: Database,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-  warp::post()
-  .and(warp::path("api"))
+  warp::path("api")
   .and(warp::path("v1"))
   .and(warp::path("nominate"))
   .and(with_db(db))
   .and(json_body::<NominationOptions>())
   .and(warp::path(chain))
   .and(warp::path::end())
+  .and(warp::post())
   .and_then(move |db: Database, options: NominationOptions| async move {
     let result = db.insert_nomination_action(options).await;
     if result.is_ok() {
@@ -423,14 +423,13 @@ fn post_nominated_records(
   })
 }
 
-pub fn routes(
+pub fn get_routes(
     chain: &'static str,
     db: Database,
     cache: Cache,
     src_path: String
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    post_nominated_records(chain, db.clone())
-    .or(get_all_validators(chain, db.clone(), cache.clone()))
+    warp::get().and(get_all_validators(chain, db.clone(), cache.clone())
     .or(get_nominator_info(chain, db.clone()))
     .or(get_all_nominators(chain, cache.clone()))
     .or(get_nominated_validators(chain, db.clone(), cache.clone()))
@@ -441,5 +440,12 @@ pub fn routes(
     .or(get_stash_rewards_collector_csv(src_path.clone()))
     .or(get_stash_rewards_collector_json(src_path))
     .or(get_validator_unclaimed_eras(chain, db.clone()))
-    .or(get_validator_slashes(chain, db.clone()))
+    .or(get_validator_slashes(chain, db)))
+}
+
+pub fn post_routes(
+  chain: &'static str,
+  db: Database,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+  post_nominated_records(chain, db)
 }

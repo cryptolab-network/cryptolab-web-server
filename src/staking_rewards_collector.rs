@@ -12,7 +12,7 @@ lazy_static! {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct SRCError {
-    message: String,
+    pub message: String,
     pub err_code: i32,
 }
 
