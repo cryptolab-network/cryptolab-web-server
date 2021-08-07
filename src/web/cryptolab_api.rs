@@ -13,7 +13,7 @@ use super::params::{AllValidatorOptions, InvalidParam};
 use std::{convert::Infallible};
 use log::{debug, error};
 use warp::http::StatusCode;
-use warp::{Filter, Rejection, post};
+use warp::{Filter, Rejection, Reply};
 
 #[derive(Deserialize)]
 struct StakingRewardsOptions {
@@ -428,7 +428,7 @@ pub fn get_routes(
     db: Database,
     cache: Cache,
     src_path: String
-) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
     warp::get().and(get_all_validators(chain, db.clone(), cache.clone())
     .or(get_nominator_info(chain, db.clone()))
     .or(get_all_nominators(chain, cache.clone()))

@@ -1,8 +1,11 @@
+use std::convert::Infallible;
+
 use crate::cache_redis::Cache;
 use crate::staking_rewards_collector::SRCError;
 use super::db::Database;
 
-use warp::{Filter};
+use warp::hyper::StatusCode;
+use warp::{Filter, Rejection};
 use warp::reject::Reject;
 mod kusama;
 mod polkadot;
@@ -41,13 +44,18 @@ impl WebServer {
         }
     }
 
-    fn initialize_routes(
+    fn initialize_legacy_routes(
         &self,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
         kusama::routes(self.kusama_db.clone(), self.cache.clone())
         .or(polkadot::routes(self.polkadot_db.clone(), self.cache.clone()))
-        .or(cryptolab_api::get_routes("KSM", self.kusama_db.clone(), self.cache.clone(),
-        Config::current().staking_rewards_collector_dir.to_string()))
+    }
+
+    fn initialize_routes(
+        &self,
+    ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+        cryptolab_api::get_routes("KSM", self.kusama_db.clone(), self.cache.clone(),
+        Config::current().staking_rewards_collector_dir.to_string())
         .or(cryptolab_api::get_routes("DOT", self.polkadot_db.clone(), self.cache.clone(),
         Config::current().staking_rewards_collector_dir.to_string()))
         .or(cryptolab_api::get_routes("WND", self.westend_db.clone().unwrap(), self.cache.clone(),
@@ -81,8 +89,10 @@ impl WebServer {
         let onekv_dot_routes = warp::path("tools").and(warp::path("oneKValidatorsDot")).and(warp::fs::dir("./www/static"));
         let contact_routes = warp::path("contact").and(warp::fs::dir("./www/static"));
 
-        let api_routes = self
-            .initialize_routes()
+        let api_routes = 
+            self.initialize_routes()
+            .or(self.initialize_legacy_routes())
+            .recover(handle_rejection)
             .with(cors)
             .with(warp::compression::gzip())
             .with(warp::log("warp_request"));
@@ -94,5 +104,19 @@ impl WebServer {
         } else {
             warp::serve(api_routes).run(([0, 0, 0, 0], self.port)).await;
         }
+    }
+}
+
+async fn handle_rejection(err: Rejection) -> Result<warp::reply::WithStatus<warp::reply::Json>, Infallible> {
+    if err.is_not_found() {
+        Ok(warp::reply::with_status(
+        warp::reply::json(&""),
+        StatusCode::NOT_FOUND,
+        ))
+    } else {
+        Ok(warp::reply::with_status(
+        warp::reply::json(&""),
+        StatusCode::BAD_REQUEST,
+        ))
     }
 }
