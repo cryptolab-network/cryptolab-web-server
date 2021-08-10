@@ -215,6 +215,8 @@ pub struct ValidatorNominationInfo {
     staker_points: Option<Vec<StakerPoint>>,
     average_apy: Option<f32>,
     slashes: Vec<ValidatorSlash>,
+    #[serde(alias = "block_nomination", alias = "blocked")]
+    block_nomination: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

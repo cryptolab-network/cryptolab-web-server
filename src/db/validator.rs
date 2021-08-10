@@ -437,6 +437,7 @@ impl Database {
                       "sub": "",
                       "is_verified": false,
                   });
+                  let blocked = _data.as_document().unwrap().get("blocked");
                   let nominators = doc.get_array("nominators").unwrap();
                   let mut _nominators = vec![];
 
@@ -468,6 +469,7 @@ impl Database {
                         },
                         "stakerPoints": staker_points.unwrap(),
                         "averageApy": average_apy.unwrap_or(&Bson::Int32(0)),
+                        "blocked": blocked.unwrap_or(&Bson::Boolean(false)),
                     };
                   } else {
                     output = doc! {
@@ -487,6 +489,7 @@ impl Database {
                         },
                         "stakerPoints": staker_points.unwrap(),
                         "averageApy": average_apy.unwrap_or(&Bson::Int32(0)),
+                        "blocked": blocked.unwrap_or(&Bson::Boolean(false)),
                     };
                   }
                   let info = output.get_document_mut("info").unwrap();
