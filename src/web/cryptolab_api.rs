@@ -1,9 +1,10 @@
 use crate::cache_redis::Cache;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
+use validator::Validate;
 use crate::staking_rewards_collector::StakingRewardsCollector;
 use crate::staking_rewards_collector::{StakingRewardsAddress, StakingRewardsReport};
-use crate::types::{NominationOptions, ValidatorNominationInfo};
+use crate::types::{NewsletterSubscriberOptions, NominationOptions, ValidatorNominationInfo};
 use crate::web::Invalid;
 
 // use super::super::cache;
@@ -43,6 +44,21 @@ fn validate_get_all_validators() -> impl Filter<Extract = (AllValidatorOptions,)
       ErrorCode::InvalidCommission)));
     }
     Ok(params)
+  })
+}
+
+fn validate_newsletter_subscription() -> impl Filter<Extract = (NewsletterSubscriberOptions,), Error = Rejection> + Copy {
+  warp::filters::body::json().and_then(|params: NewsletterSubscriberOptions| async move {
+    match params.validate() {
+      Ok(_) => {
+        Ok(params)
+      },
+      Err(e) => {
+        println!("{:?}", e);
+        Err(warp::reject::custom(InvalidParam::new("Must be a valid email address",
+      ErrorCode::InvalidEmailAddress)))
+      }
+    }
   })
 }
 
@@ -407,7 +423,7 @@ fn post_nominated_records(
   .and(warp::path(chain))
   .and(warp::path::end())
   .and(warp::post())
-  .and_then(move |db: Database, options: NominationOptions| async move {
+  .and_then(move |db: Database, options: NominationOptions| async move { 
     let result = db.insert_nomination_action(options).await;
     if result.is_ok() {
       Ok(warp::reply::with_status(
@@ -416,6 +432,33 @@ fn post_nominated_records(
       ))
     } else {
       let err = result.err().unwrap();
+      Err(warp::reject::custom(
+        OperationFailed::new(&err.to_string(), ErrorCode::OperationFailed)
+      ))
+    }
+  })
+}
+
+fn post_subscribe_newsletter(
+  db: Database,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+  warp::path("api")
+  .and(warp::path("v1"))
+  .and(warp::path("newsletter"))
+  .and(with_db(db))
+  .and(warp::path::end())
+  .and(warp::post())
+  .and(validate_newsletter_subscription())
+  .and_then(move |db: Database, options: NewsletterSubscriberOptions| async move { 
+    let result = db.insert_newsletter_subsriber(options).await;
+    if result.is_ok() {
+      Ok(warp::reply::with_status(
+        "",
+        StatusCode::OK,
+      ))
+    } else {
+      let err = result.err().unwrap();
+      error!("{}", err);
       Err(warp::reject::custom(
         OperationFailed::new(&err.to_string(), ErrorCode::OperationFailed)
       ))
@@ -447,5 +490,6 @@ pub fn post_routes(
   chain: &'static str,
   db: Database,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-  post_nominated_records(chain, db)
+  post_nominated_records(chain, db.clone())
+  .or(post_subscribe_newsletter(db))
 }

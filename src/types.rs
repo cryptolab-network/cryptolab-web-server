@@ -1,6 +1,7 @@
 use serde::de;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
+use validator::Validate;
 use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -442,9 +443,17 @@ pub enum NominationStrategy {
 }
 
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NominationOptions {
     pub stash: String,
     pub validators: Vec<String>,
     pub amount: u128,
     pub strategy: u32,
+    pub extrinsic_hash: String,
+} 
+
+#[derive(Deserialize, Validate, Debug)]
+pub struct NewsletterSubscriberOptions {
+    #[validate(email)]
+    pub email: String,
 } 
