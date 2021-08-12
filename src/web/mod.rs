@@ -2,8 +2,11 @@ use std::convert::Infallible;
 
 use crate::cache_redis::Cache;
 use crate::staking_rewards_collector::SRCError;
+use self::params::{InvalidParam, OperationFailed};
+
 use super::db::Database;
 
+use serde_json::json;
 use warp::hyper::StatusCode;
 use warp::{Filter, Rejection};
 use warp::reject::Reject;
@@ -112,6 +115,22 @@ async fn handle_rejection(err: Rejection) -> Result<warp::reply::WithStatus<warp
         Ok(warp::reply::with_status(
         warp::reply::json(&""),
         StatusCode::NOT_FOUND,
+        ))
+    } else if let Some(e) = err.find::<InvalidParam>() {
+        Ok(warp::reply::with_status(
+        warp::reply::json(&json! ({
+            "message": e.message,
+            "code": e.err_code
+        })),
+        StatusCode::BAD_REQUEST,
+        ))
+    } else if let Some(e) = err.find::<OperationFailed>() {
+        Ok(warp::reply::with_status(
+        warp::reply::json(&json! ({
+            "message": e.message,
+            "code": e.err_code
+        })),
+        StatusCode::BAD_REQUEST,
         ))
     } else {
         Ok(warp::reply::with_status(
