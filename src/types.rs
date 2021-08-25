@@ -456,4 +456,22 @@ pub struct NominationOptions {
 pub struct NewsletterSubscriberOptions {
     #[validate(email)]
     pub email: String,
-} 
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatorCommission {
+    pub address: String,
+    pub era: u32,
+    pub commission_from: f32,
+    pub commission_to: f32,
+}
+
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct StakingEvents {
+    pub commissions: Vec<ValidatorCommission>,
+    pub slashes: Vec<ValidatorSlash>,
+    pub inactive: Vec<u32>,
+}

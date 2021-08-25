@@ -1,10 +1,11 @@
 use crate::cache_redis::Cache;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
+use serde_json::json;
 use validator::Validate;
 use crate::staking_rewards_collector::StakingRewardsCollector;
 use crate::staking_rewards_collector::{StakingRewardsAddress, StakingRewardsReport};
-use crate::types::{NewsletterSubscriberOptions, NominationOptions, ValidatorNominationInfo};
+use crate::types::{NewsletterSubscriberOptions, NominationOptions, StakingEvents, ValidatorCommission, ValidatorNominationInfo};
 use crate::web::Invalid;
 
 // use super::super::cache;
@@ -88,7 +89,7 @@ fn get_nominator_info(chain: &'static str, db: Database) -> impl Filter<Extract 
   .and(warp::path::end())
   .and(with_db(db))
   .and_then(|id: String, mut db: Database| async move {
-    let nominator = db.get_nominator_info(id).await;
+    let nominator = db.get_nominator_info(&id).await;
     if let Ok(nominator) = nominator {
       Ok(warp::reply::with_status(
         warp::reply::json(&nominator),
@@ -337,24 +338,31 @@ async fn get_validator_data_from_db(
       result = db.get_all_validator_info_of_era(era - 1, options.to_db_all_validator_options()).await.unwrap();
     }
     if options.has_joined_1kv() {
-      let one_kv = cache.get_1kv_info_detail(&chain);
-      let mut one_kv_nodes: Vec<ValidatorNominationInfo> = [].to_vec();
-      for v in result {
-        let mut is1kv = false;
-        for o in &one_kv.valid {
-            if o.stash == v.id {
-              is1kv = true;
-              break;
-            }
+      if chain == "WND" {
+        Ok(warp::reply::with_status(
+          warp::reply::json(&json!([])),
+          StatusCode::OK,
+        ))
+      } else {
+        let one_kv = cache.get_1kv_info_detail(&chain);
+        let mut one_kv_nodes: Vec<ValidatorNominationInfo> = [].to_vec();
+        for v in result {
+          let mut is1kv = false;
+          for o in &one_kv.valid {
+              if o.stash == v.id {
+                is1kv = true;
+                break;
+              }
+          }
+          if is1kv {
+            one_kv_nodes.push(v);
+          }
         }
-        if is1kv {
-          one_kv_nodes.push(v);
-        }
+        Ok(warp::reply::with_status(
+          warp::reply::json(&one_kv_nodes),
+          StatusCode::OK,
+        ))
       }
-      Ok(warp::reply::with_status(
-        warp::reply::json(&one_kv_nodes),
-        StatusCode::OK,
-      ))
     } else {
       Ok(warp::reply::with_status(
           warp::reply::json(&result),
@@ -391,6 +399,52 @@ fn get_nominated_validators(
                           Ok(validators) => Ok(warp::reply::json(&validators)),
                           Err(_) => Err(warp::reject::not_found()),
                       }
+                  },
+                  Err(_) => {
+                      Err(warp::reject::not_found())
+                  },
+              }
+          }
+          Err(_) => {
+              error!("{}", "failed to get nominated list from the cache");
+              Err(warp::reject::not_found())
+          }
+      }
+  })
+}
+
+fn get_events(
+  chain: &'static str,
+  db: Database,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+  warp::path("api")
+  .and(warp::path("v1"))
+  .and(warp::path("events"))
+  .and(with_db(db))
+  .and(warp::path("stash"))
+  .and(warp::path::param())
+  .and(warp::path(chain))
+  .and(warp::path::end())
+  .and_then(move |mut db: Database, stash: String| async move {
+      let result = db.get_nominator_info(&stash).await;
+      match result {
+          Ok(nominator) => {
+              let chain_info = db.get_chain_info().await;
+              match chain_info {
+                  Ok(chain_info) => {
+                      let commission = db
+                      .get_is_commission_changed(&nominator.targets)
+                      .await;
+                      let slash = db
+                      .get_multiple_validators_slashes(&nominator.targets)
+                      .await;
+                      let inactive = db.get_all_validators_inactive(&stash).await;
+                      let events = StakingEvents {
+                        commissions: commission.unwrap_or_default(),
+                        slashes: slash.unwrap_or_default(),
+                        inactive: inactive.unwrap_or_default(),
+                      };
+                      Ok(warp::reply::json(&events))
                   },
                   Err(_) => {
                       Err(warp::reject::not_found())
@@ -483,7 +537,8 @@ pub fn get_routes(
     .or(get_stash_rewards_collector_csv(src_path.clone()))
     .or(get_stash_rewards_collector_json(src_path))
     .or(get_validator_unclaimed_eras(chain, db.clone()))
-    .or(get_validator_slashes(chain, db)))
+    .or(get_validator_slashes(chain, db.clone())))
+    .or(get_events(chain, db.clone()))
 }
 
 pub fn post_routes(

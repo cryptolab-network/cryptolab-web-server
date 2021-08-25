@@ -1,12 +1,93 @@
 use futures::StreamExt;
 use mongodb::bson::{self, Bson, Document, doc, bson};
 
-use crate::types::{self, ValidatorNominationInfo, ValidatorSlash};
+use crate::types::{self, ValidatorCommission, ValidatorNominationInfo, ValidatorSlash};
 use log::error;
 use super::{Database, DatabaseError, params::AllValidatorOptions};
 
 impl Database {
   
+    pub async fn get_multiple_validators_slashes(
+        &self,
+        validators: &[String],
+    ) -> Result<Vec<ValidatorSlash>, DatabaseError> {
+        let mut array = Vec::new();
+        let match_command = doc! {
+            "$match": {
+                "address": {
+                    "$in": validators
+                }
+            }
+        };
+    
+        match self.client.as_ref().ok_or(DatabaseError {
+            message: "Mongodb client is not working as expected.".to_string(),
+        }) {
+            Ok(client) => {
+                let db = client.database(&self.db_name);
+                let mut cursor = db
+                    .collection::<Document>("validatorSlash")
+                    .aggregate(vec![match_command], None)
+                    .await
+                    .unwrap();
+                while let Some(result) = cursor.next().await {
+                    let doc = result.unwrap();
+                    let slash: ValidatorSlash = bson::from_bson(Bson::Document(doc)).unwrap();
+                    array.push(slash);
+                }
+                Ok(array)
+            }
+            Err(e) => {
+                error!("{}", e);
+                Err(e)
+            }
+        }
+    }
+
+  pub async fn get_is_commission_changed(
+      &self,
+      validators: &Vec<String>,
+  ) -> Result<Vec<types::ValidatorCommission>, DatabaseError> {
+    let mut array: Vec<types::ValidatorCommission> = Vec::new();
+    let match_command = doc! {
+        "$match":{
+            "$and": [
+                {"address": {
+                    "$in": validators
+                }}
+            ]
+        },
+    };
+    match self.client.as_ref().ok_or(DatabaseError {
+        message: "Mongodb client is not working as expected.".to_string(),
+    }) {
+        Ok(client) => {
+            let db = client.database(&self.db_name);
+            let mut cursor = db
+              .collection::<Document>("commission")
+              .aggregate(
+                  vec![
+                      match_command,
+                  ],
+                  None,
+              )
+              .await
+              .unwrap();
+            while let Some(result) = cursor.next().await {
+                let doc = result.unwrap();
+                let vc: ValidatorCommission =
+                      bson::from_bson(Bson::Document(doc)).unwrap();
+                      array.push(vc);
+            }
+            Ok(array)
+        }
+        Err(e) => {
+            error!("{}", e);
+            Err(e)
+        }
+    }
+  }
+
   pub async fn get_validator(
     &self,
     stash: String,
