@@ -70,7 +70,7 @@ pub struct ValidatorInfo1kv {
     nominated_at: String,
     #[serde(deserialize_with = "from_optional_hex")]
     self_stake: Option<u128>,
-    valid: bool,
+    valid: Option<bool>,
     validity: Vec<Validity>,
 }
 
