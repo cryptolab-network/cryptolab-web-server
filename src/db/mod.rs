@@ -59,6 +59,7 @@ impl Database {
         let mut client_options = ClientOptions::parse(url.as_str()).await?;
         // Manually set an option.
         client_options.app_name = Some("cryptolab".to_string());
+        client_options.retry_writes = Some(false);
         let mut ca_file_path: Option<PathBuf> = None;
         if Config::current().db_ca_file.clone().is_some() {
             ca_file_path = Some(PathBuf::from(Config::current().db_ca_file.clone().unwrap()));
