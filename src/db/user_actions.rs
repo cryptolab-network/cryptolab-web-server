@@ -50,8 +50,9 @@ impl Database {
                     "timestamp": chrono::Utc::now().naive_utc().timestamp(),
                   }, None).await {
                       Ok(_) => Ok(()),
-                      Err(_) => {
-                          Err(DatabaseError { message: "Failed to write nomination record to db".to_string()}
+                      Err(e) => {
+                        println!("{:?}", e);
+                        Err(DatabaseError { message: "Failed to write nomination record to db".to_string()}
                       )},
                   }
                 }
