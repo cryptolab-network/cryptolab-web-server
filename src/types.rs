@@ -70,8 +70,8 @@ pub struct ValidatorInfo1kv {
     nominated_at: String,
     #[serde(deserialize_with = "from_optional_hex")]
     self_stake: Option<u128>,
-    valid: Option<bool>,
-    validity: Vec<Validity>,
+    pub valid: Option<bool>,
+    pub validity: Vec<Validity>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -382,10 +382,13 @@ where
             if s.len() > 3 {
                 result = u128::from_str_radix(&s[2..], 16);
             }
+            // println!("{:?}", result);
             result.map_err(de::Error::custom)?
         }
         Value::Number(num) => {
-            u128::from_str(num.to_string().as_str()).map_err(de::Error::custom)?
+            let result = u128::from_str(num.to_string().as_str());
+            // println!("{:?}", result);
+            result.map_err(de::Error::custom)?
         }
         _ => return Err(de::Error::custom("wrong type")),
     })

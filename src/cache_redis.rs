@@ -58,6 +58,17 @@ impl Cache {
     let json: Option<types::ValidatorDetail1kv> =
     serde_json::from_str(result.unwrap().as_str()).expect("JSON was not well-formatted");
     let mut data = json.unwrap();
+    for mut v in data.valid.iter_mut() {
+      let mut valid = true;
+      for validity in &v.validity {
+          if !validity.valid {
+            valid = false;
+          }
+      }
+      if valid {
+        v.valid = Some(true);
+      }
+    }
     let modified_time = timestamp_result.unwrap_or_else(|_| "0".to_string()).parse::<u64>().ok();
     data.modified_time = modified_time;
     data
