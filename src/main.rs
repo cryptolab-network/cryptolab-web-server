@@ -1,27 +1,32 @@
+#![recursion_limit="256"]
 #[macro_use]
 extern crate lazy_static;
 mod cache;
 mod config;
 mod db;
 mod types;
+mod cache_redis;
+// mod polkadot_cache;
 mod web;
 mod staking_rewards_collector;
 
 use config::Config;
 use db::Database;
-use env_logger;
+use log::debug;
 use web::{WebServer, WebServerOptions};
 use std::{env};
+
+use crate::cache_redis::Cache;
 
 #[tokio::main]
 async fn main() {
     // env::set_var("RUST_LOG", "warp");
-    env_logger::init();
+    env_logger::builder().filter_module("hyper", log::LevelFilter::Info).filter_level(log::LevelFilter::Debug).init();
     Config::init();
     let mongo_ip = env::var("MONGO_IP_ADDR");
-    println!("{:?}", mongo_ip);
-    let mongo_ip = mongo_ip.unwrap_or(Config::current().db_address.parse().unwrap());
-    println!("{}", mongo_ip);
+    debug!("{:?}", mongo_ip);
+    let mongo_ip = mongo_ip.unwrap_or_else(|_| Config::current().db_address.parse().unwrap());
+    debug!("{}", mongo_ip);
     let mut kusama_db = Database::new(
         mongo_ip.clone(),
         Config::current().db_port,
@@ -36,13 +41,39 @@ async fn main() {
                 Config::current().polkadot_db_name.as_str(),
             );
             let _ = polkadot_db.connect().await;
-            let options = WebServerOptions {
-                kusama_db: kusama_db,
-                polkadot_db: polkadot_db,
-            };
-
-            let server = WebServer::new(Config::current().port, options);
-            server.start().await;
+            let mut users_db = Database::new(
+                mongo_ip.clone(),
+                Config::current().db_port,
+                Config::current().users_db_name.as_str(),
+            );
+            let _ = users_db.connect().await;
+            if Config::current().support_westend {
+                let mut westend_db = Database::new(
+                    mongo_ip.clone(),
+                    Config::current().db_port,
+                    Config::current().westend_db_name.as_str(),
+                );
+                let _ = westend_db.connect().await;
+                let options = WebServerOptions {
+                    kusama_db,
+                    polkadot_db,
+                    users_db,
+                    westend_db: Some(westend_db),
+                    cache: Cache{},
+                };
+                let server = WebServer::new(Config::current().port, options);
+                server.start().await;
+            } else {
+                let options = WebServerOptions {
+                    kusama_db,
+                    polkadot_db,
+                    users_db,
+                    westend_db: None,
+                    cache: Cache{},
+                };
+                let server = WebServer::new(Config::current().port, options);
+                server.start().await;
+            }
         }
         Err(_) => panic!("Failed to connect to the Kusama Database"),
     }

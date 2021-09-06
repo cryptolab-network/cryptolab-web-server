@@ -1,0 +1,10 @@
+#!/bin/bash
+cd /home/ubuntu/backend
+
+if [ $DEPLOY == 'production' ]; then
+	echo 'this is production'
+  aws s3 sync s3://prod-cryptolab-backend . --exclude "www/*" --exact-timestamps
+else
+	echo 'this is staging'
+  aws s3 sync s3://cryptolab-web-server . --exclude "www/*" --exact-timestamps
+fi

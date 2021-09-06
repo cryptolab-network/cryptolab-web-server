@@ -1,0 +1,14 @@
+version: 0.0
+os: linux
+files:
+  - source: .
+    destination: /home/ubuntu/cryptolab-web-server
+hooks:
+  AfterInstall:
+    - location: scripts/copy_release
+      timeout: 300
+      runas: root
+  ApplicationStart:
+    - location: scripts/start_server
+      timeout: 300
+      runas: root

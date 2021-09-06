@@ -3,9 +3,14 @@
   "db_port": 27017,
   "kusama_db_name": "kusama",
   "polkadot_db_name": "polkadot",
+  "westend_db_name": "westend",
+  "users_db_name": "users",
   "db_has_credential": false,
   "db_username": "",
   "db_password": "",
+  "db_has_tls": false,
+  "db_ca_file": "",
+  "db_cert_key_file": "",
 
   "port": 3030,
   "cors_url": ["http://127.0.0.1:3030", "http://localhost:3030", "http://127.0.0.1:8080"],
@@ -14,5 +19,9 @@
   "new_cache_folder_polkadot": "../chain-data-collector/cache/polkadot",
 
   "staking_rewards_collector_dir": "../staking-rewards-collector",
-  "serve_www": true
+  "serve_www": true,
+
+  "redis": "192.168.2.116",
+  "redis_port": 6379,
+  "support_westend": true
 }

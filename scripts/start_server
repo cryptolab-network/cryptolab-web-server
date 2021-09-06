@@ -1,0 +1,4 @@
+#!/bin/bash
+cd /home/ubuntu/backend
+chmod +x cryptolab-backend
+systemctl restart cryptolab-backend.service

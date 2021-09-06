@@ -1,6 +1,7 @@
 use serde::de;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
+use validator::Validate;
 use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -45,23 +46,39 @@ pub struct ValidatorDetailAll {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
+pub struct Validity {
+    #[serde(rename="type")]
+    pub validity_type: String,
+    pub valid: bool,
+    pub details: String,
+    pub updated: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
 pub struct ValidatorInfo1kv {
-    aggregate: Aggregate,
+    #[serde(default)]
+    aggregate: Option<Aggregate>,
     rank: i32,
     inclusion: f32,
     name: String,
-    stash: String,
+    pub stash: String,
     elected: bool,
     active_nominators: u32,
     total_nominators: u32,
     staking_info: Option<StakingInfo>,
     nominated_at: String,
+    #[serde(deserialize_with = "from_optional_hex")]
+    self_stake: Option<u128>,
+    pub valid: Option<bool>,
+    pub validity: Vec<Validity>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ValidatorInfo1kvSimple {
-    aggregate: Aggregate,
+    #[serde(default)]
+    aggregate: Option<Aggregate>,
     rank: u32,
     inclusion: f32,
     name: String,
@@ -93,6 +110,21 @@ pub struct Aggregate {
     rank: f32,
     unclaimed: f32,
     randomness: f32,
+}
+
+impl Default for Aggregate {
+    fn default() -> Self {
+        Aggregate {
+            total: 0.0,
+            aggregate: 0.0,
+            inclusion: 0.0,
+            discovered: 0.0,
+            nominated: 0.0,
+            rank: 0.0,
+            unclaimed: 0.0,
+            randomness: 0.0,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -135,8 +167,9 @@ pub struct Nominator {
 pub struct NominatorNomination {
     #[serde(alias = "address", alias = "accountId")]
     pub account_id: String,
-    balance: Balance,
+    pub balance: Balance,
     pub targets: Vec<String>,
+    pub rewards: Option<StashRewards>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -165,18 +198,26 @@ pub struct ValidatorPrefs {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct Identity {
     display: Option<String>,
+    parent: Option<String>,
+    sub: Option<String>,
+    is_verified: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ValidatorNominationInfo {
-    id: String,
+    pub id: String,
     status_change: StatusChange,
     identity: Option<Identity>,
     info: NominationInfoSimple,
-    rewards: Option<ValidatorTotalReward>,
+    staker_points: Option<Vec<StakerPoint>>,
+    average_apy: Option<f32>,
+    slashes: Vec<ValidatorSlash>,
+    #[serde(alias = "block_nomination", alias = "blocked")]
+    block_nomination: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -185,7 +226,16 @@ pub struct ValidatorNominationTrend {
     id: String,
     status_change: StatusChange,
     identity: Option<Identity>,
+    average_apy: Option<f32>,
+    staker_points: Option<Vec<StakerPoint>>,
     pub info: Vec<NominationInfo>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StakerPoint {
+    era: u32,
+    points: u32,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -237,6 +287,10 @@ pub struct NominationInfo {
     commission: f32,
     apy: f32,
     unclaimed_eras: Option<Vec<i32>>,
+    #[serde(default, deserialize_with = "from_hex")]
+    total: u128,
+    #[serde(default, deserialize_with = "from_optional_hex")]
+    self_stake: Option<u128>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -249,8 +303,10 @@ pub struct NominationInfoSimple {
     commission: f32,
     apy: f32,
     unclaimed_eras: Option<Vec<i32>>,
-    #[serde(deserialize_with = "from_hex")]
+    #[serde(default, deserialize_with = "from_hex")]
     total: u128,
+    #[serde(deserialize_with = "from_optional_hex")]
+    self_stake: Option<u128>,
 }
 
 impl NominationInfo {
@@ -289,6 +345,24 @@ pub struct OneKvNominated {
     elected: bool,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatorSlash {
+    address: String,
+    #[serde(deserialize_with = "from_hex")]
+    total: u128,
+    others: Vec<ValidatorSlashNominator>,
+    era: u32,
+}
+
+#[derive(Serialize, Deserialize,  Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatorSlashNominator {
+    address: String,
+    #[serde(deserialize_with = "from_hex")]
+    value: u128,
+}
+
 // fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 //     where T: FromStr,
 //           T::Err: Display,
@@ -308,20 +382,52 @@ where
             if s.len() > 3 {
                 result = u128::from_str_radix(&s[2..], 16);
             }
+            // println!("{:?}", result);
             result.map_err(de::Error::custom)?
         }
         Value::Number(num) => {
-            u128::from_str(num.to_string().as_str()).map_err(de::Error::custom)?
+            let result = u128::from_str(num.to_string().as_str());
+            // println!("{:?}", result);
+            result.map_err(de::Error::custom)?
         }
         _ => return Err(de::Error::custom("wrong type")),
     })
+}
+
+fn from_optional_hex<'de, D>(deserializer: D) -> Result<Option<u128>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let v = Value::deserialize(deserializer);
+    if let Ok(v) = v {
+        match v {
+            Value::String(s) => {
+                let mut result = Ok(0);
+                if s.len() > 3 {
+                    result = u128::from_str_radix(&s[2..], 16);
+                }
+                Ok(Some(result.map_err(de::Error::custom)?))
+            }
+            Value::Number(num) => {
+                Ok(Some(u128::from_str(num.to_string().as_str()).map_err(de::Error::custom)?))
+            }
+            a => {
+                println!("{:?}", a);
+                Err(de::Error::custom("wrong type"))
+            },
+        }
+    } else {
+        println!("{:?}", v);
+        Ok(Some(0))
+    }
+    
 }
 
 fn parse_stash_name<'de, D>(d: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,
 {
-    Deserialize::deserialize(d).map(|x: Option<_>| x.unwrap_or("N/A".to_string()))
+    Deserialize::deserialize(d).map(|x: Option<_>| x.unwrap_or_else(|| "N/A".to_string()))
 }
 
 fn parse_elected<'de, D>(d: D) -> Result<bool, D::Error>
@@ -329,4 +435,46 @@ where
     D: Deserializer<'de>,
 {
     Deserialize::deserialize(d).map(|x: Option<_>| x.unwrap_or(false))
+}
+
+
+#[derive(Deserialize)]
+pub enum NominationStrategy {
+    Default = 0,
+    LowRisk = 1,
+    HighApy = 2,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NominationOptions {
+    pub stash: String,
+    pub validators: Vec<String>,
+    pub amount: u128,
+    pub strategy: u32,
+    pub extrinsic_hash: String,
+} 
+
+#[derive(Deserialize, Validate, Debug)]
+pub struct NewsletterSubscriberOptions {
+    #[validate(email)]
+    pub email: String,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatorCommission {
+    pub address: String,
+    pub era: u32,
+    pub commission_from: f32,
+    pub commission_to: f32,
+}
+
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct StakingEvents {
+    pub commissions: Vec<ValidatorCommission>,
+    pub slashes: Vec<ValidatorSlash>,
+    pub inactive: Vec<u32>,
 }
