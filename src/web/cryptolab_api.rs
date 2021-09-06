@@ -538,7 +538,7 @@ pub fn get_routes(
     .or(get_stash_rewards_collector_json(src_path))
     .or(get_validator_unclaimed_eras(chain, db.clone()))
     .or(get_validator_slashes(chain, db.clone())))
-    .or(get_events(chain, db.clone()))
+    .or(get_events(chain, db))
 }
 
 pub fn post_routes(

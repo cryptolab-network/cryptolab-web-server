@@ -11,6 +11,7 @@ pub struct Config {
     pub kusama_db_name: String,
     pub polkadot_db_name: String,
     pub westend_db_name: String,
+    pub users_db_name: String,
     pub port: u16,
     pub cors_url: Vec<String>,
     pub db_has_credential: bool,
@@ -67,6 +68,7 @@ fn read_env(mut config: Config) -> Config {
     config.kusama_db_name = env::var("KUSAMA_DB_NAME").unwrap_or(config.kusama_db_name);
     config.polkadot_db_name = env::var("POLKADOT_DB_NAME").unwrap_or(config.polkadot_db_name);
     config.westend_db_name = env::var("WESTEND_DB_NAME").unwrap_or(config.westend_db_name);
+    config.users_db_name = env::var("USERS_DB_NAME").unwrap_or(config.users_db_name);
     config.port =
         str::parse::<u16>(&env::var("PORT").unwrap_or_else(|_| config.port.to_string())).unwrap();
     config.redis = env::var("REDIS").unwrap_or(config.redis);

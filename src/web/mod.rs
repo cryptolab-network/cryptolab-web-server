@@ -25,6 +25,7 @@ pub struct WebServerOptions {
     pub kusama_db: Database,
     pub polkadot_db: Database,
     pub westend_db: Option<Database>,
+    pub users_db: Database,
     pub cache: Cache,
 }
 
@@ -33,6 +34,7 @@ pub struct WebServer {
     kusama_db: Database,
     polkadot_db: Database,
     westend_db: Option<Database>,
+    pub users_db: Database,
     cache: Cache,
 }
 
@@ -43,6 +45,7 @@ impl WebServer {
             kusama_db: options.kusama_db,
             polkadot_db: options.polkadot_db,
             westend_db: options.westend_db,
+            users_db: options.users_db,
             cache: options.cache,
         }
     }
@@ -63,8 +66,8 @@ impl WebServer {
         Config::current().staking_rewards_collector_dir.to_string()))
         .or(cryptolab_api::get_routes("WND", self.westend_db.clone().unwrap(), self.cache.clone(),
         Config::current().staking_rewards_collector_dir.to_string()))
-        .or(cryptolab_api::post_routes("KSM", self.kusama_db.clone()))
-        .or(cryptolab_api::post_routes("DOT", self.polkadot_db.clone()))
+        .or(cryptolab_api::post_routes("KSM", self.users_db.clone()))
+        .or(cryptolab_api::post_routes("DOT", self.users_db.clone()))
     }
 
     pub async fn start(&self) {

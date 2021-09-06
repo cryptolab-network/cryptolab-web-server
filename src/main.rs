@@ -41,6 +41,12 @@ async fn main() {
                 Config::current().polkadot_db_name.as_str(),
             );
             let _ = polkadot_db.connect().await;
+            let mut users_db = Database::new(
+                mongo_ip.clone(),
+                Config::current().db_port,
+                Config::current().users_db_name.as_str(),
+            );
+            let _ = users_db.connect().await;
             if Config::current().support_westend {
                 let mut westend_db = Database::new(
                     mongo_ip.clone(),
@@ -51,6 +57,7 @@ async fn main() {
                 let options = WebServerOptions {
                     kusama_db,
                     polkadot_db,
+                    users_db,
                     westend_db: Some(westend_db),
                     cache: Cache{},
                 };
@@ -60,6 +67,7 @@ async fn main() {
                 let options = WebServerOptions {
                     kusama_db,
                     polkadot_db,
+                    users_db,
                     westend_db: None,
                     cache: Cache{},
                 };
