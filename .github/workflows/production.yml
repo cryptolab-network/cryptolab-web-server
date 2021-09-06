@@ -1,8 +1,8 @@
-name: Staging
+name: Production
 
 on:
   push:
-    branches: [cryptolab-phase-2]
+    branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
@@ -31,12 +31,12 @@ jobs:
           aws-region: eu-central-1
       - name: Upload binary to S3 with AWS CLI
         run: |
-          aws s3 sync ./target/release s3://${{ secrets.S3_BUCKET }} --delete --exclude "*" --include "cryptolab-backend"
+          aws s3 sync ./target/release s3://${{ secrets.S3_BUCKET_PROD }} --delete --exclude "*" --include "cryptolab-backend"
       - name: Create CodeDeploy Deployment
         id: deploy
         run: |
           aws deploy create-deployment \
-            --application-name cryptolab-staging \
+            --application-name cryptolab-prod \
             --deployment-group-name backend-group \
             --file-exists-behavior OVERWRITE \
             --github-location repository=${{ github.repository }},commitId=${{ github.sha }}
