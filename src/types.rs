@@ -452,6 +452,12 @@ pub struct NominationOptions {
     pub validators: Vec<String>,
     pub amount: u128,
     pub strategy: u32,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NominationResultOptions {
+    pub tag: String,
     pub extrinsic_hash: String,
 } 
 

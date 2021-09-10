@@ -16,7 +16,7 @@ use log::debug;
 use web::{WebServer, WebServerOptions};
 use std::{env};
 
-use crate::cache_redis::Cache;
+use crate::{cache_redis::Cache};
 
 #[tokio::main]
 async fn main() {
