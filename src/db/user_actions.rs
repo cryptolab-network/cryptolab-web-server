@@ -15,11 +15,11 @@ pub struct NominationRecords {
     pub amount: String,
     pub strategy: u32,
     pub tag: String,
-    pub extrinsic_hash: String,
+    pub extrinsic_hash: Option<String>,
 }
 
 impl Database {
-  pub async fn insert_nomination_action(&self, options: NominationOptions) -> Result<String, DatabaseError> {
+  pub async fn insert_nomination_action(&self, chain: String, options: NominationOptions) -> Result<String, DatabaseError> {
     match self.client.as_ref().ok_or(DatabaseError {
         message: "Mongodb client is not working as expected.".to_string(),
     }) {
@@ -36,6 +36,7 @@ impl Database {
               "amount": options.amount.to_string(),
               "strategy": options.strategy as u32,
               "tag": &rand_string,
+              "chain": chain,
             }, None).await {
                 Ok(_) => Ok(rand_string),
                 Err(e) => {
@@ -65,7 +66,9 @@ impl Database {
               }
             }, None).await {
                 Ok(m) => {
-                  println!("{:?}", m);
+                  if m.is_none() {
+                    return Err(DatabaseError { message: "Tag not found".to_string()});
+                  }
                   Ok(())
                 },
                 Err(e) => {

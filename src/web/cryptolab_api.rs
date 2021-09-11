@@ -473,12 +473,12 @@ fn post_nominated_records(
   .and(warp::path("v1"))
   .and(warp::path("nominate"))
   .and(with_db(db))
-  .and(json_body::<NominationOptions>())
   .and(warp::path(chain))
   .and(warp::path::end())
+  .and(json_body::<NominationOptions>())
   .and(warp::post())
   .and_then(move |db: Database, options: NominationOptions| async move { 
-    let result = db.insert_nomination_action(options).await;
+    let result = db.insert_nomination_action(chain.to_string(), options).await;
     if result.is_ok() {
       let tag = result.unwrap();
       println!("{}", tag);
@@ -503,9 +503,9 @@ fn post_nominated_result(
   .and(warp::path("v1"))
   .and(warp::path("nominated"))
   .and(with_db(db))
-  .and(json_body::<NominationResultOptions>())
   .and(warp::path(chain))
   .and(warp::path::end())
+  .and(json_body::<NominationResultOptions>())
   .and(warp::post())
   .and_then(move |db: Database, options: NominationResultOptions| async move { 
     let result = db.insert_nomination_result(options).await;
