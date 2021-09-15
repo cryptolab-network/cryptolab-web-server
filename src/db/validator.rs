@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use mongodb::bson::{self, Bson, Document, doc, bson};
 
-use crate::types::{self, ValidatorCommission, ValidatorNominationInfo, ValidatorSlash, ValidatorStalePayoutEvent};
+use crate::types::{self, StashEraReward, StashRewards, ValidatorCommission, ValidatorNominationInfo, ValidatorSlash, ValidatorStalePayoutEvent};
 use log::error;
 use super::{Database, DatabaseError, params::AllValidatorOptions};
 
@@ -356,6 +356,52 @@ impl Database {
                 while let Some(result) = cursor.next().await {
                     let doc = result.unwrap();
                     let events: ValidatorStalePayoutEvent = bson::from_bson(Bson::Document(doc)).unwrap();
+                    array.push(events);
+                }
+                Ok(array)
+            }
+            Err(e) => {
+                error!("{}", e);
+                Err(e)
+            }
+        }
+    }
+
+    pub async fn get_nominated_validators_payout_events(
+        &self,
+        validators: &[String],
+        from: u32,
+        to: u32,
+    ) -> Result<Vec<StashEraReward>, DatabaseError> {
+        let mut array = Vec::new();
+        let match_command = doc! {
+            "$match":{
+                "$and": [
+                    {"stash": {
+                        "$in": validators
+                    }},  {
+                        "era": {
+                            "$gte": from,
+                            "$lte": to
+                        }
+                    }
+                ]
+            },
+        };
+
+        match self.client.as_ref().ok_or(DatabaseError {
+            message: "Mongodb client is not working as expected.".to_string(),
+        }) {
+            Ok(client) => {
+                let db = client.database(&self.db_name);
+                let mut cursor = db
+                    .collection::<Document>("stashInfo")
+                    .aggregate(vec![match_command], None)
+                    .await
+                    .unwrap();
+                while let Some(result) = cursor.next().await {
+                    let doc = result.unwrap();
+                    let events: StashEraReward = bson::from_bson(Bson::Document(doc)).unwrap();
                     array.push(events);
                 }
                 Ok(array)

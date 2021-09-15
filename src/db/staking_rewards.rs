@@ -117,8 +117,8 @@ pub async fn get_stash_reward(
                     era,
                     amount,
                     timestamp: (_timestamp.0) as i64,
-                    price,
-                    total: price * amount,
+                    price: Some(price),
+                    total: Some(price * amount),
                 })
             }
             Ok(types::StashRewards {

@@ -260,9 +260,10 @@ pub struct StashRewards {
 pub struct StashEraReward {
     pub era: i32,
     pub amount: f64,
+    #[serde(default, deserialize_with = "from_float")]
     pub timestamp: i64,
-    pub price: f64,
-    pub total: f64,
+    pub price: Option<f64>,
+    pub total: Option<f64>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -445,6 +446,28 @@ where
     Deserialize::deserialize(d).map(|x: Option<_>| x.unwrap_or(false))
 }
 
+fn from_float<'de, D>(deserializer: D) -> Result<i64, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let v = Value::deserialize(deserializer);
+    if let Ok(v) = v {
+        match v {
+            Value::Number(num) => {
+                Ok(i64::from_str(num.to_string().as_str()).map_err(de::Error::custom)?)
+            }
+            a => {
+                println!("{:?}", a);
+                Err(de::Error::custom("wrong type"))
+            },
+        }
+    } else {
+        println!("{:?}", v);
+        Ok(0)
+    }
+    
+}
+
 
 #[derive(Deserialize)]
 pub enum NominationStrategy {
@@ -491,5 +514,6 @@ pub struct StakingEvents {
     pub commissions: Vec<ValidatorCommission>,
     pub slashes: Vec<ValidatorSlash>,
     pub inactive: Vec<u32>,
-    pub stalePayouts: Vec<ValidatorStalePayoutEvent>
+    pub stalePayouts: Vec<ValidatorStalePayoutEvent>,
+    pub payouts: Vec<StashEraReward>,
 }

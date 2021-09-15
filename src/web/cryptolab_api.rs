@@ -443,11 +443,13 @@ fn get_events(
                       let inactive = db.get_all_validators_inactive(&stash).await;
                       let stale_payouts =
                         db.get_nominated_validators_stale_payout_events(&nominator.targets, last_era, era).await;
+                      let payouts = db.get_nominated_validators_payout_events(&nominator.targets, last_era, era).await;
                       let events = StakingEvents {
                         commissions: commission.unwrap_or_default(),
                         slashes: slash.unwrap_or_default(),
                         inactive: inactive.unwrap_or_default(),
                         stalePayouts: stale_payouts.unwrap_or_default(),
+                        payouts: payouts.unwrap_or_default(),
                       };
                       Ok(warp::reply::json(&events))
                   },
