@@ -355,6 +355,14 @@ pub struct ValidatorSlash {
     era: u32,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ValidatorStalePayoutEvent {
+    address: String,
+    unclaimed_payout_eras: Vec<u32>,
+    era: u32,
+}
+
 #[derive(Serialize, Deserialize,  Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct ValidatorSlashNominator {
@@ -483,4 +491,5 @@ pub struct StakingEvents {
     pub commissions: Vec<ValidatorCommission>,
     pub slashes: Vec<ValidatorSlash>,
     pub inactive: Vec<u32>,
+    pub stalePayouts: Vec<ValidatorStalePayoutEvent>
 }

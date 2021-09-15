@@ -431,18 +431,23 @@ fn get_events(
           Ok(nominator) => {
               let chain_info = db.get_chain_info().await;
               match chain_info {
-                  Ok(_chain_info) => {
+                  Ok(chain_info) => {
+                      let era = chain_info.active_era;
+                      let last_era = chain_info.active_era - 84;
                       let commission = db
-                      .get_is_commission_changed(&nominator.targets)
+                      .get_is_commission_changed(&nominator.targets, last_era, era)
                       .await;
                       let slash = db
                       .get_multiple_validators_slashes(&nominator.targets)
                       .await;
                       let inactive = db.get_all_validators_inactive(&stash).await;
+                      let stale_payouts =
+                        db.get_nominated_validators_stale_payout_events(&nominator.targets, last_era, era).await;
                       let events = StakingEvents {
                         commissions: commission.unwrap_or_default(),
                         slashes: slash.unwrap_or_default(),
                         inactive: inactive.unwrap_or_default(),
+                        stalePayouts: stale_payouts.unwrap_or_default(),
                       };
                       Ok(warp::reply::json(&events))
                   },
