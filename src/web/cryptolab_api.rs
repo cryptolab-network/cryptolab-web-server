@@ -5,7 +5,7 @@ use serde_json::json;
 use validator::Validate;
 use crate::staking_rewards_collector::StakingRewardsCollector;
 use crate::staking_rewards_collector::{StakingRewardsAddress, StakingRewardsReport};
-use crate::types::{NewsletterSubscriberOptions, NominationOptions, StakingEvents, ValidatorCommission, ValidatorNominationInfo};
+use crate::types::{NewsletterSubscriberOptions, NominationOptions, NominationResultOptions, StakingEvents, ValidatorNominationInfo};
 use crate::web::Invalid;
 
 // use super::super::cache;
@@ -431,7 +431,7 @@ fn get_events(
           Ok(nominator) => {
               let chain_info = db.get_chain_info().await;
               match chain_info {
-                  Ok(chain_info) => {
+                  Ok(_chain_info) => {
                       let commission = db
                       .get_is_commission_changed(&nominator.targets)
                       .await;
@@ -473,12 +473,42 @@ fn post_nominated_records(
   .and(warp::path("v1"))
   .and(warp::path("nominate"))
   .and(with_db(db))
-  .and(json_body::<NominationOptions>())
   .and(warp::path(chain))
   .and(warp::path::end())
+  .and(json_body::<NominationOptions>())
   .and(warp::post())
   .and_then(move |db: Database, options: NominationOptions| async move { 
-    let result = db.insert_nomination_action(options).await;
+    let result = db.insert_nomination_action(chain.to_string(), options).await;
+    if result.is_ok() {
+      let tag = result.unwrap();
+      println!("{}", tag);
+      Ok(warp::reply::with_status(
+        tag,
+        StatusCode::OK,
+      ))
+    } else {
+      let err = result.err().unwrap();
+      Err(warp::reject::custom(
+        OperationFailed::new(&err.to_string(), ErrorCode::OperationFailed)
+      ))
+    }
+  })
+}
+
+fn post_nominated_result(
+  chain: &'static str,
+  db: Database,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+  warp::path("api")
+  .and(warp::path("v1"))
+  .and(warp::path("nominated"))
+  .and(with_db(db))
+  .and(warp::path(chain))
+  .and(warp::path::end())
+  .and(json_body::<NominationResultOptions>())
+  .and(warp::post())
+  .and_then(move |db: Database, options: NominationResultOptions| async move { 
+    let result = db.insert_nomination_result(options).await;
     if result.is_ok() {
       Ok(warp::reply::with_status(
         "",
@@ -546,5 +576,6 @@ pub fn post_routes(
   db: Database,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
   post_nominated_records(chain, db.clone())
-  .or(post_subscribe_newsletter(db))
+  .or(post_subscribe_newsletter(db.clone()))
+  .or(post_nominated_result(chain, db))
 }
