@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use mongodb::bson::{self, Bson, Document, doc, bson};
 
-use crate::types::{self, StashEraReward, StashRewards, ValidatorCommission, ValidatorNominationInfo, ValidatorSlash, ValidatorStalePayoutEvent};
+use crate::types::{self, CBStashEraReward, ValidatorCommission, ValidatorNominationInfo, ValidatorSlash, ValidatorStalePayoutEvent};
 use log::error;
 use super::{Database, DatabaseError, params::AllValidatorOptions};
 
@@ -372,7 +372,7 @@ impl Database {
         validators: &[String],
         from: u32,
         to: u32,
-    ) -> Result<Vec<StashEraReward>, DatabaseError> {
+    ) -> Result<Vec<CBStashEraReward>, DatabaseError> {
         let mut array = Vec::new();
         let match_command = doc! {
             "$match":{
@@ -401,7 +401,7 @@ impl Database {
                     .unwrap();
                 while let Some(result) = cursor.next().await {
                     let doc = result.unwrap();
-                    let events: StashEraReward = bson::from_bson(Bson::Document(doc)).unwrap();
+                    let events: CBStashEraReward = bson::from_bson(Bson::Document(doc)).unwrap();
                     array.push(events);
                 }
                 Ok(array)

@@ -448,7 +448,7 @@ fn get_events(
                         commissions: commission.unwrap_or_default(),
                         slashes: slash.unwrap_or_default(),
                         inactive: inactive.unwrap_or_default(),
-                        stalePayouts: stale_payouts.unwrap_or_default(),
+                        stale_payouts: stale_payouts.unwrap_or_default(),
                         payouts: payouts.unwrap_or_default(),
                       };
                       Ok(warp::reply::json(&events))

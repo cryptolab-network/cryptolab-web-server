@@ -268,6 +268,17 @@ pub struct StashEraReward {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct CBStashEraReward {
+    pub era: i32,
+    pub amount: f64,
+    #[serde(default, deserialize_with = "from_float")]
+    pub timestamp: i64,
+    #[serde(alias = "stash")]
+    pub address: String
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct CoinPrice {
     pub price: f64,
     pub timestamp: i64,
@@ -514,6 +525,6 @@ pub struct StakingEvents {
     pub commissions: Vec<ValidatorCommission>,
     pub slashes: Vec<ValidatorSlash>,
     pub inactive: Vec<u32>,
-    pub stalePayouts: Vec<ValidatorStalePayoutEvent>,
-    pub payouts: Vec<StashEraReward>,
+    pub stale_payouts: Vec<ValidatorStalePayoutEvent>,
+    pub payouts: Vec<CBStashEraReward>,
 }
