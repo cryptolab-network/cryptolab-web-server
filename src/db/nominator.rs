@@ -9,11 +9,23 @@ impl Database {
     pub async fn get_all_validators_inactive(
     &mut self,
     stash: &str,
+    from: u32,
+    to: u32,
     ) -> Result<Vec<u32>, DatabaseError> {
         let match_command = doc! {
             "$match":{
-                "address": stash
+                "$and": [
+                    {
+                        "address": stash
+                    }, {
+                        "era": {
+                            "$gte": from,
+                            "$lte": to
+                        }
+                    }
+                ]
             },
+            
         };
         match self.client.as_ref().ok_or(DatabaseError {
             message: "Mongodb client is not working as expected.".to_string(),

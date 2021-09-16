@@ -10,13 +10,22 @@ impl Database {
     pub async fn get_multiple_validators_slashes(
         &self,
         validators: &[String],
+        from: u32,
+        to: u32,
     ) -> Result<Vec<ValidatorSlash>, DatabaseError> {
         let mut array = Vec::new();
         let match_command = doc! {
             "$match": {
-                "address": {
-                    "$in": validators
+                "$and": [
+                    {"address": {
+                        "$in": validators
+                    }},  {
+                    "era": {
+                        "$gte": from,
+                        "$lte": to
+                    }
                 }
+            ]
             }
         };
     

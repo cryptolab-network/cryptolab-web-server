@@ -10,7 +10,7 @@ use crate::web::Invalid;
 
 // use super::super::cache;
 use super::super::db::Database;
-use super::params::{ErrorCode, OperationFailed};
+use super::params::{ErrorCode, EventFilterOptions, OperationFailed};
 use super::params::{AllValidatorOptions, InvalidParam};
 use std::{convert::Infallible};
 use log::{debug, error};
@@ -47,6 +47,17 @@ fn validate_get_all_validators() -> impl Filter<Extract = (AllValidatorOptions,)
     Ok(params)
   })
 }
+
+fn validate_event_filters() -> impl Filter<Extract = (EventFilterOptions,), Error = Rejection> + Copy {
+  warp::filters::query::query().and_then(|params: EventFilterOptions| async move {
+    if params.from_era() > params.to_era() {
+      return Err(warp::reject::custom(InvalidParam::new("from_era cannot be greater than to_era", 
+      ErrorCode::InvalidApy)));
+    }
+    Ok(params)
+  })
+}
+
 
 fn validate_newsletter_subscription() -> impl Filter<Extract = (NewsletterSubscriberOptions,), Error = Rejection> + Copy {
   warp::filters::body::json().and_then(|params: NewsletterSubscriberOptions| async move {
@@ -425,25 +436,32 @@ fn get_events(
   .and(warp::path::param())
   .and(warp::path(chain))
   .and(warp::path::end())
-  .and_then(move |mut db: Database, stash: String| async move {
+  .and(validate_event_filters())
+  .and_then(move |mut db: Database, stash: String, filters: EventFilterOptions| async move {
       let result = db.get_nominator_info(&stash).await;
       match result {
           Ok(nominator) => {
               let chain_info = db.get_chain_info().await;
               match chain_info {
                   Ok(chain_info) => {
-                      let era = chain_info.active_era;
-                      let last_era = chain_info.active_era - 84;
+                      let mut to_era = chain_info.active_era;
+                      if filters.to_era() > 0 {
+                        to_era = filters.to_era();
+                      }
+                      let mut from_era = chain_info.active_era - 84;
+                      if filters.from_era() > 0 {
+                        from_era = filters.from_era();
+                      }
                       let commission = db
-                      .get_is_commission_changed(&nominator.targets, last_era, era)
+                      .get_is_commission_changed(&nominator.targets, from_era, to_era)
                       .await;
                       let slash = db
-                      .get_multiple_validators_slashes(&nominator.targets)
+                      .get_multiple_validators_slashes(&nominator.targets, from_era, to_era)
                       .await;
-                      let inactive = db.get_all_validators_inactive(&stash).await;
+                      let inactive = db.get_all_validators_inactive(&stash, from_era, to_era).await;
                       let stale_payouts =
-                        db.get_nominated_validators_stale_payout_events(&nominator.targets, last_era, era).await;
-                      let payouts = db.get_nominated_validators_payout_events(&nominator.targets, last_era, era).await;
+                        db.get_nominated_validators_stale_payout_events(&nominator.targets, from_era, to_era).await;
+                      let payouts = db.get_nominated_validators_payout_events(&nominator.targets, from_era, to_era).await;
                       let events = StakingEvents {
                         commissions: commission.unwrap_or_default(),
                         slashes: slash.unwrap_or_default(),
