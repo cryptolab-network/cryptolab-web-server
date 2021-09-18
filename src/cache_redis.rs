@@ -104,5 +104,14 @@ impl Cache {
     serde_json::from_str(result.unwrap().as_str()).expect("JSON was not well-formatted");
     json.unwrap()
   
-  }    
+  }
+
+  pub fn cache_current_era(&self, chain: &str, era: u32) {
+    self.connect().unwrap().set::<String, u32, u32>(format!("{}Era", chain), era);
+  }
+
+  pub fn get_current_era(&self, chain: &str) -> u32 {
+    let result: Result<u32, RedisError> = self.connect().unwrap().get(format!("{}Era", chain));
+    result.unwrap_or(0)
+  }
 }

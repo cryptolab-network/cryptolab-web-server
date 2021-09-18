@@ -84,8 +84,11 @@ fn get_all_validators(chain: &'static str, db: Database, cache: Cache) -> impl F
     .and(with_cache(cache))
     .and(validate_get_all_validators())
     .and_then(move |db: Database, cache: Cache, p: AllValidatorOptions| async move {
-        let chain_info = db.get_chain_info().await.unwrap();
-        let validators = get_validator_data_from_db(db, cache, chain.to_string(), chain_info.active_era, p).await;
+        let mut era = cache.get_current_era(chain);
+        if era == 0 {
+          era = db.get_chain_info().await.unwrap().active_era;
+        }
+        let validators = get_validator_data_from_db(db, cache, chain.to_string(), era, p).await;
         validators
     })
 }
@@ -400,20 +403,16 @@ fn get_nominated_validators(
       let result = &cache.get_nominator(&chain, stash);
       match result {
           Ok(nominator) => {
-              let chain_info = db.get_chain_info().await;
-              match chain_info {
-                  Ok(chain_info) => {
-                      let result = db
-                      .get_validator_info(&nominator.targets, &chain_info.active_era)
-                      .await;
-                      match result {
-                          Ok(validators) => Ok(warp::reply::json(&validators)),
-                          Err(_) => Err(warp::reject::not_found()),
-                      }
-                  },
-                  Err(_) => {
-                      Err(warp::reject::not_found())
-                  },
+            let mut era = cache.get_current_era(chain);
+            if era == 0 {
+              era = db.get_chain_info().await.unwrap().active_era;
+            }
+            let result = db
+              .get_validator_info(&nominator.targets, &era)
+              .await;
+              match result {
+                  Ok(validators) => Ok(warp::reply::json(&validators)),
+                  Err(_) => Err(warp::reject::not_found()),
               }
           }
           Err(_) => {
@@ -427,54 +426,52 @@ fn get_nominated_validators(
 fn get_events(
   chain: &'static str,
   db: Database,
+  cache: Cache,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
   warp::path("api")
   .and(warp::path("v1"))
   .and(warp::path("events"))
   .and(with_db(db))
+  .and(with_cache(cache))
   .and(warp::path("stash"))
   .and(warp::path::param())
   .and(warp::path(chain))
   .and(warp::path::end())
   .and(validate_event_filters())
-  .and_then(move |mut db: Database, stash: String, filters: EventFilterOptions| async move {
+  .and_then(move |mut db: Database, cache: Cache, stash: String, filters: EventFilterOptions| async move {
       let result = db.get_nominator_info(&stash).await;
       match result {
           Ok(nominator) => {
-              let chain_info = db.get_chain_info().await;
-              match chain_info {
-                  Ok(chain_info) => {
-                      let mut to_era = chain_info.active_era;
-                      if filters.to_era() > 0 {
-                        to_era = filters.to_era();
-                      }
-                      let mut from_era = chain_info.active_era - 84;
-                      if filters.from_era() > 0 {
-                        from_era = filters.from_era();
-                      }
-                      let commission = db
-                      .get_is_commission_changed(&nominator.targets, from_era, to_era)
-                      .await;
-                      let slash = db
-                      .get_multiple_validators_slashes(&nominator.targets, from_era, to_era)
-                      .await;
-                      let inactive = db.get_all_validators_inactive(&stash, from_era, to_era).await;
-                      let stale_payouts =
-                        db.get_nominated_validators_stale_payout_events(&nominator.targets, from_era, to_era).await;
-                      let payouts = db.get_nominated_validators_payout_events(&nominator.targets, from_era, to_era).await;
-                      let events = StakingEvents {
-                        commissions: commission.unwrap_or_default(),
-                        slashes: slash.unwrap_or_default(),
-                        inactive: inactive.unwrap_or_default(),
-                        stale_payouts: stale_payouts.unwrap_or_default(),
-                        payouts: payouts.unwrap_or_default(),
-                      };
-                      Ok(warp::reply::json(&events))
-                  },
-                  Err(_) => {
-                      Err(warp::reject::not_found())
-                  },
+              let mut era = cache.get_current_era(chain);
+              if era == 0 {
+                era = db.get_chain_info().await.unwrap().active_era;
               }
+              let mut to_era = era;
+              if filters.to_era() > 0 {
+                to_era = filters.to_era();
+              }
+              let mut from_era = era - 84;
+              if filters.from_era() > 0 {
+                from_era = filters.from_era();
+              }
+              let commission = db
+              .get_is_commission_changed(&nominator.targets, from_era, to_era)
+              .await;
+              let slash = db
+              .get_multiple_validators_slashes(&nominator.targets, from_era, to_era)
+              .await;
+              let inactive = db.get_all_validators_inactive(&stash, from_era, to_era).await;
+              let stale_payouts =
+                db.get_nominated_validators_stale_payout_events(&nominator.targets, from_era, to_era).await;
+              let payouts = db.get_nominated_validators_payout_events(&nominator.targets, from_era, to_era).await;
+              let events = StakingEvents {
+                commissions: commission.unwrap_or_default(),
+                slashes: slash.unwrap_or_default(),
+                inactive: inactive.unwrap_or_default(),
+                stale_payouts: stale_payouts.unwrap_or_default(),
+                payouts: payouts.unwrap_or_default(),
+              };
+              Ok(warp::reply::json(&events))
           }
           Err(_) => {
               error!("{}", "failed to get nominated list from the cache");
@@ -506,7 +503,6 @@ fn post_nominated_records(
     let result = db.insert_nomination_action(chain.to_string(), options).await;
     if result.is_ok() {
       let tag = result.unwrap();
-      println!("{}", tag);
       Ok(warp::reply::with_status(
         tag,
         StatusCode::OK,
@@ -587,13 +583,13 @@ pub fn get_routes(
     .or(get_nominated_validators(chain, db.clone(), cache.clone()))
     .or(get_validator_history(chain, db.clone()))
     .or(get_1kv_validators(chain, cache.clone()))
-    .or(get_1kv_nominators(chain, cache))
+    .or(get_1kv_nominators(chain, cache.clone()))
     .or(get_stash_rewards_collector(src_path.clone()))
     .or(get_stash_rewards_collector_csv(src_path.clone()))
     .or(get_stash_rewards_collector_json(src_path))
     .or(get_validator_unclaimed_eras(chain, db.clone()))
     .or(get_validator_slashes(chain, db.clone())))
-    .or(get_events(chain, db))
+    .or(get_events(chain, db, cache))
 }
 
 pub fn post_routes(

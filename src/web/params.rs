@@ -153,26 +153,12 @@ pub struct EventFilterOptions {
 }
 
 impl EventFilterOptions {
-    pub fn new() -> Self {
-        EventFilterOptions{
-            from_era: None,
-            to_era: None
-        }
-    }
-
     pub fn from_era(&self) -> u32 {
         self.from_era.unwrap_or(0)
     }
 
     pub fn to_era(&self) -> u32 {
         self.to_era.unwrap_or(0)
-    }
-
-    pub fn to_db_event_filter_options(&self) -> super::super::db::params::EventFilterOptions {
-        super::super::db::params::EventFilterOptions {
-            from_era: self.from_era(),
-            to_era: self.to_era(),
-        }
     }
 }
 

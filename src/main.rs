@@ -9,6 +9,7 @@ mod cache_redis;
 // mod polkadot_cache;
 mod web;
 mod staking_rewards_collector;
+mod scheduler;
 
 use config::Config;
 use db::Database;
@@ -16,7 +17,7 @@ use log::debug;
 use web::{WebServer, WebServerOptions};
 use std::{env};
 
-use crate::{cache_redis::Cache};
+use crate::{cache_redis::Cache, scheduler::cache_era_info};
 
 #[tokio::main]
 async fn main() {
@@ -61,6 +62,9 @@ async fn main() {
                     westend_db: Some(westend_db),
                     cache: Cache{},
                 };
+                cache_era_info("KSM");
+                cache_era_info("DOT");
+                cache_era_info("WND");
                 let server = WebServer::new(Config::current().port, options);
                 server.start().await;
             } else {
@@ -71,6 +75,8 @@ async fn main() {
                     westend_db: None,
                     cache: Cache{},
                 };
+                cache_era_info("KSM");
+                cache_era_info("DOT");
                 let server = WebServer::new(Config::current().port, options);
                 server.start().await;
             }
