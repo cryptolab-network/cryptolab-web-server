@@ -58,7 +58,6 @@ fn read_config(path: String) -> Result<Config, Box<dyn Error>> {
             let reader = BufReader::new(file);
             let config: Config = serde_json::from_reader(reader)?;
             let config = read_env(config);
-            println!("{:?}", config);
             Ok(config)
         }
         Err(e) => Err(Box::new(e)),
