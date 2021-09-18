@@ -27,11 +27,9 @@ impl Database {
             },
             
         };
-        match self.client.as_ref().ok_or(DatabaseError {
-            message: "Mongodb client is not working as expected.".to_string(),
-        }) {
-            Ok(client) => {
-                let db = client.database(&self.db_name);
+        let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+        if let Ok(client) = client {
+            let db = client.database(&self.db_name);
                 let mut cursor = db
                     .collection::<Document>("inactiveEvents")
                     .aggregate(vec![match_command], None)
@@ -42,14 +40,10 @@ impl Database {
                     let n = bson::from_document(doc).unwrap();
                     Ok(n)
                 } else {
-                    Err(DatabaseError {
-                        message: format!("Cannot find stash {}.", &stash),
-                    })
+                    Err(DatabaseError::GetFailed)
                 }
-            }
-            Err(e) => {
-                Err(e)
-            }
+        } else {
+            Err(DatabaseError::Disconnected)
         }
     }
 
@@ -80,35 +74,28 @@ impl Database {
                 "address": stash
             },
         };
-
-        match self.client.as_ref().ok_or(DatabaseError {
-            message: "Mongodb client is not working as expected.".to_string(),
-        }) {
-            Ok(client) => {
-                let db = client.database(&self.db_name);
-                let mut cursor = db
-                    .collection::<Document>("nominator")
-                    .aggregate(vec![match_command], None)
-                    .await
-                    .unwrap();
-                if let Some(result) = cursor.next().await {
-                    let doc = result.unwrap();
-                    let n = doc! {
-                        "accountId": doc.get("address").unwrap().as_str().unwrap().to_string(),
-                        "balance": doc.get("balance").unwrap(),
-                        "targets": doc.get_array("targets").unwrap()
-                    };
-                    let n = bson::from_document(n).unwrap();
-                    Ok(n)
-                } else {
-                    Err(DatabaseError {
-                        message: format!("Cannot find stash {}.", &stash),
-                    })
-                }
+        let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+        if let Ok(client) = client {
+            let db = client.database(&self.db_name);
+            let mut cursor = db
+                .collection::<Document>("nominator")
+                .aggregate(vec![match_command], None)
+                .await
+                .unwrap();
+            if let Some(result) = cursor.next().await {
+                let doc = result.unwrap();
+                let n = doc! {
+                    "accountId": doc.get("address").unwrap().as_str().unwrap().to_string(),
+                    "balance": doc.get("balance").unwrap(),
+                    "targets": doc.get_array("targets").unwrap()
+                };
+                let n = bson::from_document(n).unwrap();
+                Ok(n)
+            } else {
+                Err(DatabaseError::GetFailed)
             }
-            Err(e) => {
-                Err(e)
-            }
+        } else {
+            Err(DatabaseError::Disconnected)
         }
     }
 }
