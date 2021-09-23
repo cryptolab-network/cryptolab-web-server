@@ -463,7 +463,7 @@ fn get_events(
               let inactive = db.get_all_validators_inactive(&stash, from_era, to_era).await;
               let stale_payouts =
                 db.get_nominated_validators_stale_payout_events(&nominator.targets, from_era, to_era).await;
-              let payouts = db.get_nominated_validators_payout_events(&nominator.targets, from_era, to_era).await;
+              let payouts = db.get_nominated_validators_payout_events(nominator.account_id, from_era, to_era).await;
               let events = StakingEvents {
                 commissions: commission.unwrap_or_default(),
                 slashes: slash.unwrap_or_default(),
