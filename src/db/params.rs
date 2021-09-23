@@ -15,3 +15,9 @@ pub struct AllValidatorOptions {
     pub commission_max: f32,
     pub has_verified_identity: bool,
 }
+
+#[derive(Deserialize)]
+pub struct EventFilterOptions {
+    pub from_era: u32,
+    pub to_era: u32,
+}

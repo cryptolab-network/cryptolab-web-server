@@ -39,15 +39,16 @@ impl Config {
         config.make_current();
     }
     pub fn current() -> Arc<Config> {
-        CURRENT_CONFIG.with(|c| c.read().unwrap().clone())
+        CURRENT_CONFIG.read().unwrap().clone()
     }
     pub fn make_current(self) {
-        CURRENT_CONFIG.with(|c| *c.write().unwrap() = Arc::new(self))
+        let mut c = CURRENT_CONFIG.write().unwrap();
+        *c = Arc::new(self);
     }
 }
 
-thread_local! {
-    static CURRENT_CONFIG: RwLock<Arc<Config>> = RwLock::new(Default::default());
+lazy_static! {
+    static ref CURRENT_CONFIG: RwLock<Arc<Config>> = RwLock::new(Default::default());
 }
 
 fn read_config(path: String) -> Result<Config, Box<dyn Error>> {
@@ -57,7 +58,6 @@ fn read_config(path: String) -> Result<Config, Box<dyn Error>> {
             let reader = BufReader::new(file);
             let config: Config = serde_json::from_reader(reader)?;
             let config = read_env(config);
-            println!("{:?}", config);
             Ok(config)
         }
         Err(e) => Err(Box::new(e)),

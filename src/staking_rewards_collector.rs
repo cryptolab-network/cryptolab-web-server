@@ -247,8 +247,8 @@ impl StakingRewardsCollector {
         amount: daily_rewards.amount_human_readable,
         timestamp: chrono::NaiveDateTime::parse_from_str(date_str.as_str(), "%d-%m-%Y %H:%M:%S")
         .unwrap_or_else(|_| chrono::NaiveDateTime::from_timestamp(0, 0)).timestamp_millis(),
-        price: daily_rewards.price,
-        total: daily_rewards.value_fiat,
+        price: Some(daily_rewards.price),
+        total: Some(daily_rewards.value_fiat),
       });
       total_in_fiat += daily_rewards.value_fiat;
     }

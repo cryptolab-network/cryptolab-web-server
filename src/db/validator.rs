@@ -1,8 +1,7 @@
 use futures::StreamExt;
 use mongodb::bson::{self, Bson, Document, doc, bson};
 
-use crate::types::{self, ValidatorCommission, ValidatorNominationInfo, ValidatorSlash};
-use log::error;
+use crate::types::{self, CBStashEraReward, ValidatorCommission, ValidatorNominationInfo, ValidatorSlash, ValidatorStalePayoutEvent};
 use super::{Database, DatabaseError, params::AllValidatorOptions};
 
 impl Database {
@@ -10,43 +9,48 @@ impl Database {
     pub async fn get_multiple_validators_slashes(
         &self,
         validators: &[String],
+        from: u32,
+        to: u32,
     ) -> Result<Vec<ValidatorSlash>, DatabaseError> {
         let mut array = Vec::new();
         let match_command = doc! {
             "$match": {
-                "address": {
-                    "$in": validators
+                "$and": [
+                    {"address": {
+                        "$in": validators
+                    }},  {
+                    "era": {
+                        "$gte": from,
+                        "$lte": to
+                    }
                 }
+            ]
             }
         };
-    
-        match self.client.as_ref().ok_or(DatabaseError {
-            message: "Mongodb client is not working as expected.".to_string(),
-        }) {
-            Ok(client) => {
-                let db = client.database(&self.db_name);
-                let mut cursor = db
-                    .collection::<Document>("validatorSlash")
-                    .aggregate(vec![match_command], None)
-                    .await
-                    .unwrap();
-                while let Some(result) = cursor.next().await {
-                    let doc = result.unwrap();
-                    let slash: ValidatorSlash = bson::from_bson(Bson::Document(doc)).unwrap();
-                    array.push(slash);
-                }
-                Ok(array)
+        let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+        if let Ok(client) = client {
+            let db = client.database(&self.db_name);
+            let mut cursor = db
+                .collection::<Document>("validatorSlash")
+                .aggregate(vec![match_command], None)
+                .await
+                .unwrap();
+            while let Some(result) = cursor.next().await {
+                let doc = result.unwrap();
+                let slash: ValidatorSlash = bson::from_bson(Bson::Document(doc)).unwrap();
+                array.push(slash);
             }
-            Err(e) => {
-                error!("{}", e);
-                Err(e)
-            }
+            Ok(array)
+        } else {
+            Err(DatabaseError::Disconnected)
         }
     }
 
   pub async fn get_is_commission_changed(
       &self,
-      validators: &Vec<String>,
+      validators: &[String],
+      from: u32,
+      to: u32,
   ) -> Result<Vec<types::ValidatorCommission>, DatabaseError> {
     let mut array: Vec<types::ValidatorCommission> = Vec::new();
     let match_command = doc! {
@@ -54,37 +58,37 @@ impl Database {
             "$and": [
                 {"address": {
                     "$in": validators
-                }}
+                }},  {
+                    "era": {
+                        "$gte": from,
+                        "$lte": to
+                    }
+                }
             ]
         },
     };
-    match self.client.as_ref().ok_or(DatabaseError {
-        message: "Mongodb client is not working as expected.".to_string(),
-    }) {
-        Ok(client) => {
-            let db = client.database(&self.db_name);
-            let mut cursor = db
-              .collection::<Document>("commission")
-              .aggregate(
-                  vec![
-                      match_command,
-                  ],
-                  None,
-              )
-              .await
-              .unwrap();
-            while let Some(result) = cursor.next().await {
-                let doc = result.unwrap();
-                let vc: ValidatorCommission =
-                      bson::from_bson(Bson::Document(doc)).unwrap();
-                      array.push(vc);
-            }
-            Ok(array)
+    let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+    if let Ok(client) = client {
+        let db = client.database(&self.db_name);
+        let mut cursor = db
+            .collection::<Document>("commission")
+            .aggregate(
+                vec![
+                    match_command,
+                ],
+                None,
+            )
+            .await
+            .unwrap();
+        while let Some(result) = cursor.next().await {
+            let doc = result.unwrap();
+            let vc: ValidatorCommission =
+                    bson::from_bson(Bson::Document(doc)).unwrap();
+                    array.push(vc);
         }
-        Err(e) => {
-            error!("{}", e);
-            Err(e)
-        }
+        Ok(array)
+    } else {
+        Err(DatabaseError::Disconnected)
     }
   }
 
@@ -148,152 +152,135 @@ impl Database {
               "info": {"$push": "$info"}
           }
       };
-      // let mut array = Vec::new();
-      match self.client.as_ref().ok_or(DatabaseError {
-          message: "Mongodb client is not working as expected.".to_string(),
-      }) {
-          Ok(client) => {
-              let db = client.database(&self.db_name);
-              let mut cursor = db
-                .collection::<Document>("validator")
+      let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+        if let Ok(client) = client {
+            let db = client.database(&self.db_name);
+            let mut cursor = db
+            .collection::<Document>("validator")
+            .aggregate(
+                vec![
+                    match_command,
+                    lookup_command,
+                    unwind_command,
+                    project_command,
+                    group_command,
+                ],
+                None,
+            )
+            .await
+            .unwrap();
+            if let Some(result) = cursor.next().await {
+            let unwrapped = result.unwrap();
+            let mut info: types::ValidatorNominationTrend =
+                bson::from_bson(Bson::Document(unwrapped)).unwrap();
+            let mut cursor2 = db
+                .collection::<Document>("nomination")
                 .aggregate(
                     vec![
-                        match_command,
-                        lookup_command,
-                        unwind_command,
-                        project_command,
-                        group_command,
+                        doc! {
+                            "$match":{
+                                "validator": &stash
+                            },
+                        },
+                        doc! {
+                            "$sort": {"era": -1}
+                        },
+                        doc! {
+                            "$limit": 1
+                        },
+                        doc! {
+                            "$lookup": {
+                                "from": "nominator",
+                                "localField": "nominators",
+                                "foreignField": "address",
+                                "as": "nominators",
+                            }
+                        },
+                        doc! {
+                            "$project": {
+                                "era": 1,
+                                "exposure": 1,
+                                "commission": 1,
+                                "apy": 1,
+                                "validator": 1,
+                                "nominatorCount": {
+                                    "$size": "$nominators"
+                                },
+                                "nominators": 1,
+                                "total": 1,
+                                "selfStake": 1,
+                            }
+                        },
                     ],
                     None,
                 )
                 .await
                 .unwrap();
-              if let Some(result) = cursor.next().await {
-                let unwrapped = result.unwrap();
-                let mut info: types::ValidatorNominationTrend =
-                    bson::from_bson(Bson::Document(unwrapped)).unwrap();
-                let mut cursor2 = db
-                    .collection::<Document>("nomination")
-                    .aggregate(
-                        vec![
-                            doc! {
-                                "$match":{
-                                    "validator": &stash
-                                },
-                            },
-                            doc! {
-                                "$sort": {"era": -1}
-                            },
-                            doc! {
-                                "$limit": 1
-                            },
-                            doc! {
-                                "$lookup": {
-                                    "from": "nominator",
-                                    "localField": "nominators",
-                                    "foreignField": "address",
-                                    "as": "nominators",
-                                }
-                            },
-                            doc! {
-                                "$project": {
-                                    "era": 1,
-                                    "exposure": 1,
-                                    "commission": 1,
-                                    "apy": 1,
-                                    "validator": 1,
-                                    "nominatorCount": {
-                                        "$size": "$nominators"
-                                    },
-                                    "nominators": 1,
-                                    "total": 1,
-                                    "selfStake": 1,
-                                }
-                            },
-                        ],
-                        None,
-                    )
-                    .await
-                    .unwrap();
-                if let Some(result2) = cursor2.next().await {
-                    let info2: types::NominationInfo =
-                        bson::from_bson(Bson::Document(result2.unwrap())).unwrap();
-                    let mut index: i32 = -1;
-                    for (i, era_info) in info.info.iter().enumerate() {
-                        if era_info.era == info2.era {
-                            index = i as i32;
-                        }
-                    }
-                    if index >= 0 {
-                        info.info[index as usize]
-                            .set_nominators(info2.nominators.unwrap_or_else(std::vec::Vec::new));
+            if let Some(result2) = cursor2.next().await {
+                let info2: types::NominationInfo =
+                    bson::from_bson(Bson::Document(result2.unwrap())).unwrap();
+                let mut index: i32 = -1;
+                for (i, era_info) in info.info.iter().enumerate() {
+                    if era_info.era == info2.era {
+                        index = i as i32;
                     }
                 }
-                return Ok(info);
-              }
-              Err(DatabaseError {
-                  message: format!("Failed to find validator with stash {}", &stash),
-              })
-          }
-          Err(e) => {
-              error!("{}", e);
-              Err(e)
-          }
-      }
+                if index >= 0 {
+                    info.info[index as usize]
+                        .set_nominators(info2.nominators.unwrap_or_else(std::vec::Vec::new));
+                }
+            }
+            return Ok(info);
+            }
+            Err(DatabaseError::GetFailed)
+        } else {
+            Err(DatabaseError::Disconnected)
+        }
   }
 
   pub async fn get_validator_unclaimed_eras(
       &self,
       stash: String,
   ) -> Result<Vec<i32>, DatabaseError> {
-      let mut array = Vec::new();
-      let match_command = doc! {
-          "$match":{
-              "validator": stash
-          },
-      };
-
-      match self.client.as_ref().ok_or(DatabaseError {
-          message: "Mongodb client is not working as expected.".to_string(),
-      }) {
-          Ok(client) => {
-              let db = client.database(&self.db_name);
-              let mut cursor = db
-                  .collection::<Document>("unclaimedEraInfo")
-                  .aggregate(vec![match_command], None)
-                  .await
-                  .unwrap();
-              while let Some(result) = cursor.next().await {
-                  let doc = result.unwrap();
-                  let eras = doc.get_array("eras").unwrap();
-                  for era in eras {
-                      array.push(era.as_i32().unwrap());
-                  }
-              }
-              Ok(array)
-          }
-          Err(e) => {
-              error!("{}", e);
-              Err(e)
-          }
-      }
-  }
-
-  pub async fn get_validator_slashes(
-    &self,
-    stash: String,
-) -> Result<Vec<ValidatorSlash>, DatabaseError> {
     let mut array = Vec::new();
     let match_command = doc! {
         "$match":{
-            "address": stash
+            "validator": stash
         },
     };
+    let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+    if let Ok(client) = client {
+        let db = client.database(&self.db_name);
+        let mut cursor = db
+            .collection::<Document>("unclaimedEraInfo")
+            .aggregate(vec![match_command], None)
+            .await
+            .unwrap();
+        while let Some(result) = cursor.next().await {
+            let doc = result.unwrap();
+            let eras = doc.get_array("eras").unwrap();
+            for era in eras {
+                array.push(era.as_i32().unwrap());
+            }
+        }
+        Ok(array)
+    } else {
+        Err(DatabaseError::Disconnected)
+    }
+  }
 
-    match self.client.as_ref().ok_or(DatabaseError {
-        message: "Mongodb client is not working as expected.".to_string(),
-    }) {
-        Ok(client) => {
+    pub async fn get_validator_slashes(
+        &self,
+        stash: String,
+    ) -> Result<Vec<ValidatorSlash>, DatabaseError> {
+        let mut array = Vec::new();
+        let match_command = doc! {
+            "$match":{
+                "address": stash
+            },
+        };
+        let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+        if let Ok(client) = client {
             let db = client.database(&self.db_name);
             let mut cursor = db
                 .collection::<Document>("validatorSlash")
@@ -306,13 +293,90 @@ impl Database {
                 array.push(slash);
             }
             Ok(array)
-        }
-        Err(e) => {
-            error!("{}", e);
-            Err(e)
+        } else {
+            Err(DatabaseError::Disconnected)
         }
     }
-}
+
+    pub async fn get_nominated_validators_stale_payout_events(
+        &self,
+        validators: &[String],
+        from: u32,
+        to: u32,
+    ) -> Result<Vec<ValidatorStalePayoutEvent>, DatabaseError> {
+        let mut array = Vec::new();
+        let match_command = doc! {
+            "$match":{
+                "$and": [
+                    {"address": {
+                        "$in": validators
+                    }},  {
+                        "era": {
+                            "$gte": from,
+                            "$lte": to
+                        }
+                    }
+                ]
+            },
+        };
+        let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+        if let Ok(client) = client {
+            let db = client.database(&self.db_name);
+            let mut cursor = db
+                .collection::<Document>("stalePayouts")
+                .aggregate(vec![match_command], None)
+                .await
+                .unwrap();
+            while let Some(result) = cursor.next().await {
+                let doc = result.unwrap();
+                let events: ValidatorStalePayoutEvent = bson::from_bson(Bson::Document(doc)).unwrap();
+                array.push(events);
+            }
+            Ok(array)
+        } else {
+            Err(DatabaseError::Disconnected)
+        }
+    }
+
+    pub async fn get_nominated_validators_payout_events(
+        &self,
+        stash: String,
+        from: u32,
+        to: u32,
+    ) -> Result<Vec<CBStashEraReward>, DatabaseError> {
+        let mut array = Vec::new();
+        let match_command = doc! {
+            "$match":{
+                "$and": [
+                    {
+                        "stash": stash
+                    }, {
+                        "era": {
+                            "$gte": from,
+                            "$lte": to
+                        }
+                    }
+                ]
+            },
+        };
+        let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+        if let Ok(client) = client {
+            let db = client.database(&self.db_name);
+            let mut cursor = db
+                .collection::<Document>("stashInfo")
+                .aggregate(vec![match_command], None)
+                .await
+                .unwrap();
+            while let Some(result) = cursor.next().await {
+                let doc = result.unwrap();
+                let events: CBStashEraReward = bson::from_bson(Bson::Document(doc)).unwrap();
+                array.push(events);
+            }
+            Ok(array)
+        } else {
+            Err(DatabaseError::Disconnected)
+        }
+    }
 
   pub async fn get_all_validator_info_of_era(
       &self,
@@ -486,11 +550,9 @@ impl Database {
       mut array: Vec<ValidatorNominationInfo>,
       pipeline: Vec<Document>,
   ) -> Result<Vec<ValidatorNominationInfo>, DatabaseError> {
-      match self.client.as_ref().ok_or(DatabaseError {
-          message: "Mongodb client is not working as expected.".to_string(),
-      }) {
-          Ok(client) => {
-              let db = client.database(&self.db_name);
+    let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+    if let Ok(client) = client {
+        let db = client.database(&self.db_name);
               let mut cursor = db
                   .collection::<Document>("nomination")
                   .aggregate(pipeline, None)
@@ -593,12 +655,9 @@ impl Database {
                   array.push(info);
               }
               Ok(array)
-          }
-          Err(e) => {
-              error!("{}", e);
-              Err(e)
-          }
-      }
+    } else {
+        Err(DatabaseError::Disconnected)
+    }
   }
 
 }

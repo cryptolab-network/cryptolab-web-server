@@ -146,3 +146,19 @@ impl AllValidatorOptions {
     }
 }
 
+#[derive(Deserialize)]
+pub struct EventFilterOptions {
+    from_era: Option<u32>,
+    to_era: Option<u32>
+}
+
+impl EventFilterOptions {
+    pub fn from_era(&self) -> u32 {
+        self.from_era.unwrap_or(0)
+    }
+
+    pub fn to_era(&self) -> u32 {
+        self.to_era.unwrap_or(0)
+    }
+}
+
