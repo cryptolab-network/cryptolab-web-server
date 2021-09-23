@@ -340,7 +340,7 @@ impl Database {
 
     pub async fn get_nominated_validators_payout_events(
         &self,
-        validators: &[String],
+        stash: String,
         from: u32,
         to: u32,
     ) -> Result<Vec<CBStashEraReward>, DatabaseError> {
@@ -348,9 +348,9 @@ impl Database {
         let match_command = doc! {
             "$match":{
                 "$and": [
-                    {"stash": {
-                        "$in": validators
-                    }},  {
+                    {
+                        "stash": stash
+                    }, {
                         "era": {
                             "$gte": from,
                             "$lte": to
