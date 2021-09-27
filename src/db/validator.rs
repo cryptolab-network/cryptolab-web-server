@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use mongodb::bson::{self, Bson, Document, doc, bson};
 
-use crate::types::{self, CBStashEraReward, ValidatorCommission, ValidatorNominationInfo, ValidatorSlash, ValidatorStalePayoutEvent};
+use crate::types::{self, CBStashEraReward, ChillEvent, KickEvent, OverSubscribeEvent, ValidatorCommission, ValidatorNominationInfo, ValidatorSlash, ValidatorStalePayoutEvent};
 use super::{Database, DatabaseError, params::AllValidatorOptions};
 
 impl Database {
@@ -454,6 +454,146 @@ impl Database {
           )
           .await
       }
+  }
+
+  pub async fn get_kick_events(
+      &self,
+      nominator: &str,
+      from: &u32,
+      to: &u32
+  ) -> Result<Vec<KickEvent>, DatabaseError> {
+    let mut array: Vec<types::KickEvent> = Vec::new();
+    let match_command = doc! {
+        "$match":{
+            "$and": [
+                {
+                    "nominator": nominator
+                },  {
+                    "era": {
+                        "$gte": from,
+                        "$lte": to
+                    }
+                }
+            ]
+        },
+    };
+    let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+    if let Ok(client) = client {
+        let db = client.database(&self.db_name);
+        let mut cursor = db
+            .collection::<Document>("kickEvents")
+            .aggregate(
+                vec![
+                    match_command,
+                ],
+                None,
+            )
+            .await
+            .unwrap();
+        while let Some(result) = cursor.next().await {
+            let doc = result.unwrap();
+            let vc: KickEvent =
+                    bson::from_bson(Bson::Document(doc)).unwrap();
+                    array.push(vc);
+        }
+        Ok(array)
+    } else {
+        Err(DatabaseError::Disconnected)
+    }
+  }
+
+  pub async fn get_chill_events(
+    &self,
+    validators: &[String],
+    from: &u32,
+    to: &u32
+    ) -> Result<Vec<ChillEvent>, DatabaseError> {
+    let mut array: Vec<types::ChillEvent> = Vec::new();
+    let match_command = doc! {
+        "$match":{
+            "$and": [
+                {
+                    "address": {
+                        "$in": validators
+                    }
+                },  {
+                    "era": {
+                        "$gte": from,
+                        "$lte": to
+                    }
+                }
+            ]
+        },
+    };
+    let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+    if let Ok(client) = client {
+        let db = client.database(&self.db_name);
+        let mut cursor = db
+            .collection::<Document>("kickEvents")
+            .aggregate(
+                vec![
+                    match_command,
+                ],
+                None,
+            )
+            .await
+            .unwrap();
+        while let Some(result) = cursor.next().await {
+            let doc = result.unwrap();
+            let vc: ChillEvent =
+                    bson::from_bson(Bson::Document(doc)).unwrap();
+                    array.push(vc);
+        }
+        Ok(array)
+    } else {
+        Err(DatabaseError::Disconnected)
+    }
+  }
+
+  pub async fn get_oversubscribe_events(
+    &self,
+    nominator: &str,
+    from: &u32,
+    to: &u32
+    ) -> Result<Vec<OverSubscribeEvent>, DatabaseError> {
+    let mut array: Vec<types::OverSubscribeEvent> = Vec::new();
+    let match_command = doc! {
+        "$match":{
+            "$and": [
+                {
+                    "nominators": nominator
+                },  {
+                    "era": {
+                        "$gte": from,
+                        "$lte": to
+                    }
+                }
+            ]
+        },
+    };
+    let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+    if let Ok(client) = client {
+        let db = client.database(&self.db_name);
+        let mut cursor = db
+            .collection::<Document>("overSubscribeEvents")
+            .aggregate(
+                vec![
+                    match_command,
+                ],
+                None,
+            )
+            .await
+            .unwrap();
+        while let Some(result) = cursor.next().await {
+            let doc = result.unwrap();
+            let vc: OverSubscribeEvent =
+                    bson::from_bson(Bson::Document(doc)).unwrap();
+                    array.push(vc);
+        }
+        Ok(array)
+    } else {
+        Err(DatabaseError::Disconnected)
+    }
   }
 
   pub async fn get_validator_info(

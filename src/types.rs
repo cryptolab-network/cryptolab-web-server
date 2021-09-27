@@ -527,4 +527,40 @@ pub struct StakingEvents {
     pub inactive: Vec<u32>,
     pub stale_payouts: Vec<ValidatorStalePayoutEvent>,
     pub payouts: Vec<CBStashEraReward>,
+    pub kicks: Vec<KickEvent>,
+    pub chills: Vec<ChillEvent>,
+    pub over_subscribes: Vec<OverSubscribeEventOutput>,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct KickEvent {
+    pub address: String,
+    pub nominator: String,
+    pub era: u32,
+}
+
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct ChillEvent {
+    pub address: String,
+    pub era: u32,
+}
+
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OverSubscribeEvent {
+    pub nominators: Vec<String>,
+    pub address: String,
+    pub era: u32,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct OverSubscribeEventOutput {
+    pub nominator: String,
+    pub address: String,
+    pub era: u32,
 }
