@@ -473,6 +473,7 @@ fn get_events(
                     era: ele.era,
                     address: ele.address,
                     nominator: stash.clone(),
+                    amount: ele.nominators.iter().find(|&x| x.who == stash.clone()).unwrap().value.clone()
                   });
               }
               let events = StakingEvents {

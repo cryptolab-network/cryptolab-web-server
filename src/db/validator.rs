@@ -561,7 +561,7 @@ impl Database {
         "$match":{
             "$and": [
                 {
-                    "nominators": nominator
+                    "nominators.who": nominator
                 },  {
                     "era": {
                         "$gte": from,

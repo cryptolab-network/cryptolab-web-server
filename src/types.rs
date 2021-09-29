@@ -552,7 +552,7 @@ pub struct ChillEvent {
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct OverSubscribeEvent {
-    pub nominators: Vec<String>,
+    pub nominators: Vec<IndividualExposure>,
     pub address: String,
     pub era: u32,
 }
@@ -561,6 +561,14 @@ pub struct OverSubscribeEvent {
 #[serde(rename_all = "camelCase")]
 pub struct OverSubscribeEventOutput {
     pub nominator: String,
+    pub amount: String,
     pub address: String,
     pub era: u32,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct IndividualExposure {
+    pub who: String,
+    pub value: String,
 }
