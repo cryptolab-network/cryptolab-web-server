@@ -5,7 +5,7 @@ use serde_json::json;
 use validator::Validate;
 use crate::staking_rewards_collector::StakingRewardsCollector;
 use crate::staking_rewards_collector::{StakingRewardsAddress, StakingRewardsReport};
-use crate::types::{NewsletterSubscriberOptions, NominationOptions, NominationResultOptions, StakingEvents, ValidatorNominationInfo};
+use crate::types::{NewsletterSubscriberOptions, NominationOptions, NominationResultOptions, OverSubscribeEventOutput, StakingEvents, ValidatorNominationInfo};
 use crate::web::Invalid;
 
 // use super::super::cache;
@@ -464,12 +464,27 @@ fn get_events(
               let stale_payouts =
                 db.get_nominated_validators_stale_payout_events(&nominator.targets, from_era, to_era).await;
               let payouts = db.get_nominated_validators_payout_events(nominator.account_id, from_era, to_era).await;
+              let kicks = db.get_kick_events(&stash, &from_era, &to_era).await;
+              let chills = db.get_chill_events(&nominator.targets, &from_era, &to_era).await;
+              let oversubscribes = db.get_oversubscribe_events(&stash, &from_era, &to_era).await.unwrap_or_default();
+              let mut o = Vec::<OverSubscribeEventOutput>::new();
+              for ele in oversubscribes {
+                  o.push(OverSubscribeEventOutput {
+                    era: ele.era,
+                    address: ele.address,
+                    nominator: stash.clone(),
+                    amount: ele.nominators.iter().find(|&x| x.who == stash.clone()).unwrap().value.clone()
+                  });
+              }
               let events = StakingEvents {
                 commissions: commission.unwrap_or_default(),
                 slashes: slash.unwrap_or_default(),
                 inactive: inactive.unwrap_or_default(),
                 stale_payouts: stale_payouts.unwrap_or_default(),
                 payouts: payouts.unwrap_or_default(),
+                kicks: kicks.unwrap_or_default(),
+                chills: chills.unwrap_or_default(),
+                over_subscribes: o,
               };
               Ok(warp::reply::json(&events))
           }
