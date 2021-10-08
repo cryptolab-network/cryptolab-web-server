@@ -31,6 +31,7 @@ pub struct Config {
     pub serve_www: Option<bool>,
 
     pub support_westend: bool,
+    pub ref_key_password: String,
 }
 
 impl Config {
@@ -117,5 +118,6 @@ fn read_env(mut config: Config) -> Config {
     let support_westend = str::parse::<bool>(
         &env::var("SUPPORT_WESTEND").unwrap_or_else(|_| config.support_westend.to_string()));
     config.support_westend = support_westend.unwrap();
+    config.ref_key_password = env::var("REF_KEY_PASSWORD").unwrap_or(config.ref_key_password);
     config
 }

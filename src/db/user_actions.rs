@@ -1,10 +1,11 @@
+use log::info;
 use serde::{Deserialize};
 use mongodb::bson::{doc};
 use rand::{Rng, thread_rng};
 
-use crate::types::{NewsletterSubscriberOptions, NominationOptions, NominationResultOptions};
+use crate::{referer, types::{NewsletterSubscriberOptions, NominationOptions, NominationResultOptions}};
 
-use super::{Database, DatabaseError};
+use super::{Database, DatabaseError, params::DbRefKeyOptions};
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -15,6 +16,14 @@ pub struct NominationRecords {
     pub strategy: u32,
     pub tag: String,
     pub extrinsic_hash: Option<String>,
+}
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RefKeyRecords {
+    pub stash: String,
+    pub ref_key: String,
+    pub timestamp: u32,
 }
 
 impl Database {
@@ -67,6 +76,105 @@ impl Database {
               println!("{:?}", e);
               Err(DatabaseError::WriteFailed)
           },
+      }
+    } else {
+        Err(DatabaseError::Disconnected)
+    }
+  }
+
+  pub async fn get_validator_ref_key(&self, stash: &str) -> Result<String, DatabaseError> {
+    let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+    if let Ok(client) = client {
+      let db = client.database(&self.db_name);
+      match db.collection::<RefKeyRecords>("refKeyRecords").find_one(doc! {"stash": stash}, None).await {
+        Ok(c) => {
+          info!("{:?}", c);
+          match c {
+            Some(c) => {
+              Ok(c.ref_key)
+            },
+            None => {
+              Err(DatabaseError::GetFailed)
+            }
+          }
+        },
+        Err(_) => {
+          Err(DatabaseError::GetFailed)
+        }
+      }
+    } else {
+        Err(DatabaseError::Disconnected)
+    }
+  }
+
+  pub async fn decode_validator_ref_key(&self, ref_key: &str) -> Result<DbRefKeyOptions, DatabaseError> {
+    let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+    if let Ok(client) = client {
+      let db = client.database(&self.db_name);
+      match db.collection::<RefKeyRecords>("refKeyRecords").find_one(doc! {"refKey": ref_key}, None).await {
+        Ok(c) => {
+          info!("{:?}", c);
+          match c {
+            Some(c) => {
+              let decoded = referer::decrypt_ref_key(&c.ref_key).unwrap();
+              Ok(decoded)
+            },
+            None => {
+              Err(DatabaseError::GetFailed)
+            }
+          }
+        },
+        Err(_) => {
+          Err(DatabaseError::GetFailed)
+        }
+      }
+    } else {
+        Err(DatabaseError::Disconnected)
+    }
+  }
+
+  pub async fn insert_validator_ref_key(&self, options: DbRefKeyOptions) -> Result<(), DatabaseError> {
+    let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
+    if let Ok(client) = client {
+      let db = client.database(&self.db_name);
+      match db.collection::<RefKeyRecords>("refKeyRecords").find_one(doc! {"stash": &options.stash}, None).await {
+        Ok(c) => {
+          match c {
+            Some(_) => {
+              let result = db.collection::<RefKeyRecords>("refKeyRecords").update_one(doc! {
+                "stash": options.stash,
+              }, doc! {
+                "$set": {
+                  "refKey": options.ref_key,
+                  "timestamp": options.timestamp,
+                }
+              }, None).await;
+              match result {
+                  Ok(_) => {Ok(())},
+                  Err(_) => {
+                    Err(DatabaseError::WriteFailed)
+                  },
+              }
+            },
+            None => {
+              match db.collection("refKeyRecords").insert_one(doc! {
+                "stash": options.stash,
+                "timestamp": options.timestamp,
+                "refKey": options.ref_key,
+              }, None).await {
+                  Ok(_) => Ok(()),
+                  Err(e) => {
+                    println!("{:?}", e);
+                    Err(DatabaseError::WriteFailed)
+                  },
+              }
+            }
+          }
+          
+        },
+        Err(_) => {
+          Err(DatabaseError::WriteFailed)
+        }
       }
     } else {
         Err(DatabaseError::Disconnected)

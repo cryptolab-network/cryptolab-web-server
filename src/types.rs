@@ -270,7 +270,7 @@ pub struct StashEraReward {
 #[serde(rename_all = "camelCase")]
 pub struct CBStashEraReward {
     pub era: i32,
-    pub amount: f64,
+    pub amount: u128,
     #[serde(default, deserialize_with = "from_float")]
     pub timestamp: i64,
     #[serde(alias = "stash")]
@@ -479,7 +479,6 @@ where
     
 }
 
-
 #[derive(Deserialize)]
 pub enum NominationStrategy {
     Default = 0,
@@ -507,6 +506,13 @@ pub struct NominationResultOptions {
 pub struct NewsletterSubscriberOptions {
     #[validate(email)]
     pub email: String,
+}
+
+#[derive(Deserialize, Validate, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RefKeyOptions {
+    pub ref_key: String,
+    pub encoded: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

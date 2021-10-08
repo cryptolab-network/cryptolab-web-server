@@ -10,6 +10,7 @@ mod cache_redis;
 mod web;
 mod staking_rewards_collector;
 mod scheduler;
+mod referer;
 
 use config::Config;
 use db::Database;

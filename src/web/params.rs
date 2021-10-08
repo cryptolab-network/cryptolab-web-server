@@ -8,6 +8,7 @@ pub enum ErrorCode {
     InvalidApy = -1000,
     InvalidCommission = -1001,
     InvalidEmailAddress = -1002,
+    EmptyRefKey = -1010,
     OperationFailed = -2000,
 }
 
