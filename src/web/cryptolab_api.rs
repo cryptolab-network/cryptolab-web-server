@@ -63,7 +63,7 @@ fn validate_event_filters() -> impl Filter<Extract = (EventFilterOptions,), Erro
 }
 
 fn validate_ref_key_options() -> impl Filter<Extract = (RefKeyOptions,), Error = Rejection> + Copy {
-  warp::filters::query::query().and_then(|params: RefKeyOptions| async move {
+  warp::filters::body::json().and_then(|params: RefKeyOptions| async move {
     if params.ref_key.is_empty() {
       return Err(warp::reject::custom(InvalidParam::new("ref_key cannot be empty", 
       ErrorCode::EmptyRefKey)));
@@ -354,6 +354,25 @@ fn with_string(
   warp::any().map(move || s.clone())
 }
 
+async fn gen_ref_key(
+  db: Database,
+  stash: &str
+) -> Result<warp::reply::Json, Infallible> {
+  match db.get_validator_ref_key(&stash).await {
+    Ok(ref_key) => {
+      Ok(warp::reply::json(&json!({
+        "refKey": ref_key
+      })))
+    },
+    Err(_) => {
+      let ref_key = referer::gen_ref_key(&stash);
+      Ok(warp::reply::json(&json!({
+        "refKey": ref_key
+      })))
+    },
+  }
+}
+
 async fn get_validator_data_from_db(
     db: Database,
     cache: Cache,
@@ -525,27 +544,7 @@ fn get_ref_key(
   .and(warp::path(chain))
   .and(warp::path::end())
   .and_then(move |db: Database, user_db: Database, stash: String| async move {
-    match db.get_validator(stash.clone()).await {
-        Ok(_) => {
-          match user_db.get_validator_ref_key(&stash).await {
-              Ok(ref_key) => {
-                Ok(warp::reply::json(&json!({
-                  "refKey": ref_key
-                })))
-              },
-              Err(_) => {
-                let ref_key = referer::gen_ref_key(&stash);
-                Ok(warp::reply::json(&json!({
-                  "refKey": ref_key
-                })))
-              },
-          }
-        },
-        Err(_) => {
-          Err(warp::reject::not_found())
-        },
-    }
-      
+    gen_ref_key(user_db, &stash).await
   })
 }
 

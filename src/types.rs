@@ -270,7 +270,7 @@ pub struct StashEraReward {
 #[serde(rename_all = "camelCase")]
 pub struct CBStashEraReward {
     pub era: i32,
-    pub amount: u128,
+    pub amount: f64,
     #[serde(default, deserialize_with = "from_float")]
     pub timestamp: i64,
     #[serde(alias = "stash")]

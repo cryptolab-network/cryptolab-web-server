@@ -21,9 +21,7 @@ pub fn gen_ref_key(stash: &str) -> String {
     .map(char::from)
     .collect();
   let ref_key = format!("{}|{}|{}", stash, timestamp, rand_string);
-  info!("{}", ref_key);
   let encoded = bs58::encode(ref_key).into_string();
-  info!("{:?}", encoded);
   encoded
 }
 
