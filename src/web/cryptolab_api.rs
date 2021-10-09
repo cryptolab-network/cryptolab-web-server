@@ -1,4 +1,5 @@
 use crate::cache_redis::Cache;
+use crate::config::Config;
 use crate::referer;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
@@ -13,7 +14,6 @@ use crate::web::Invalid;
 use super::super::db::Database;
 use super::params::{ErrorCode, EventFilterOptions, OperationFailed};
 use super::params::{AllValidatorOptions, InvalidParam};
-use std::env;
 use std::path::Path;
 use std::process::Command;
 use std::{convert::Infallible};
@@ -654,8 +654,7 @@ fn verify_ref_key(
   .and(warp::path::end())
   .and(validate_ref_key_options())
   .and_then(move |db: Database, stash: String, options: RefKeyOptions| async move {
-    let signature_verifier = env::var("SIGNATURE_VERIFIER").unwrap();
-    let buf = Path::new(&signature_verifier).join("src").join("index.js").to_path_buf();
+    let buf = Path::new(Config::current().signature_verifier.as_str()).join("src").join("index.js").to_path_buf();
     let path  = buf.to_str().unwrap();
     let cmd = Command::new("node")
     .args([path, "--msg", &options.ref_key,
