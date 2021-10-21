@@ -66,8 +66,10 @@ impl Database {
                     url += format!("{}:{}@", username, password).as_str();
                 }
             }
+            url += format!("{}:{}/{}??authSource=admin", self.ip, self.port, self.db_name).as_str();
+        } else {
+            url += format!("{}:{}/{}", self.ip, self.port, self.db_name).as_str();
         }
-        url += format!("{}:{}/{}", self.ip, self.port, self.db_name).as_str();
         let client_options = ClientOptions::parse(url.as_str()).await.map_err(DatabaseError::Mongo);
         match client_options {
             Ok(mut client_options) => {
