@@ -20,3 +20,4 @@ lazy_static = "1.4.0"
 rand = "0.8.0"
 redis = "0.21.0"
 validator = { version = "0.14", features = ["derive"] }
+bs58 = "0.4.0"

@@ -31,6 +31,7 @@ pub struct Config {
     pub serve_www: Option<bool>,
 
     pub support_westend: bool,
+    pub signature_verifier: String,
 }
 
 impl Config {
@@ -117,5 +118,6 @@ fn read_env(mut config: Config) -> Config {
     let support_westend = str::parse::<bool>(
         &env::var("SUPPORT_WESTEND").unwrap_or_else(|_| config.support_westend.to_string()));
     config.support_westend = support_westend.unwrap();
+    config.signature_verifier = env::var("SIGNATURE_VERIFIER").unwrap_or(config.signature_verifier);
     config
 }

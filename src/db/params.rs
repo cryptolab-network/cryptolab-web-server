@@ -21,3 +21,12 @@ pub struct EventFilterOptions {
     pub from_era: u32,
     pub to_era: u32,
 }
+
+
+#[derive(Deserialize, Debug)]
+pub struct DbRefKeyOptions {
+    pub stash: String,
+    pub ref_key: String,
+    pub timestamp: u32,
+    pub rand: String,
+}

@@ -66,9 +66,9 @@ impl WebServer {
         Config::current().staking_rewards_collector_dir.to_string()))
         .or(cryptolab_api::get_routes("WND", self.westend_db.clone().unwrap(), self.cache.clone(),
         Config::current().staking_rewards_collector_dir.to_string()))
-        .or(cryptolab_api::post_routes("KSM", self.users_db.clone()))
-        .or(cryptolab_api::post_routes("DOT", self.users_db.clone()))
-        .or(cryptolab_api::post_routes("WND", self.users_db.clone()))
+        .or(cryptolab_api::post_routes("KSM", self.users_db.clone(), self.kusama_db.clone()))
+        .or(cryptolab_api::post_routes("DOT", self.users_db.clone(), self.polkadot_db.clone()))
+        .or(cryptolab_api::post_routes("WND", self.users_db.clone(), self.westend_db.clone().unwrap()))
     }
 
     pub async fn start(&self) {

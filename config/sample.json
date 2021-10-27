@@ -23,5 +23,6 @@
 
   "redis": "192.168.2.116",
   "redis_port": 6379,
-  "support_westend": true
+  "support_westend": true,
+  "signature_verifier": "E:\\git\\polkadot-signature-verifier"
 }

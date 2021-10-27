@@ -479,7 +479,6 @@ where
     
 }
 
-
 #[derive(Deserialize)]
 pub enum NominationStrategy {
     Default = 0,
@@ -507,6 +506,13 @@ pub struct NominationResultOptions {
 pub struct NewsletterSubscriberOptions {
     #[validate(email)]
     pub email: String,
+}
+
+#[derive(Deserialize, Validate, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RefKeyOptions {
+    pub ref_key: String,
+    pub encoded: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]

@@ -1,19 +1,23 @@
 use crate::cache_redis::Cache;
+use crate::config::Config;
+use crate::referer;
 use serde::Deserialize;
 use serde::de::DeserializeOwned;
 use serde_json::json;
 use validator::Validate;
 use crate::staking_rewards_collector::StakingRewardsCollector;
 use crate::staking_rewards_collector::{StakingRewardsAddress, StakingRewardsReport};
-use crate::types::{NewsletterSubscriberOptions, NominationOptions, NominationResultOptions, OverSubscribeEventOutput, StakingEvents, ValidatorNominationInfo};
+use crate::types::{NewsletterSubscriberOptions, NominationOptions, NominationResultOptions, OverSubscribeEventOutput, RefKeyOptions, StakingEvents, ValidatorNominationInfo};
 use crate::web::Invalid;
 
 // use super::super::cache;
 use super::super::db::Database;
 use super::params::{ErrorCode, EventFilterOptions, OperationFailed};
 use super::params::{AllValidatorOptions, InvalidParam};
+use std::path::Path;
+use std::process::Command;
 use std::{convert::Infallible};
-use log::{debug, error};
+use log::{debug, error, info};
 use warp::http::StatusCode;
 use warp::{Filter, Rejection, Reply};
 
@@ -53,6 +57,16 @@ fn validate_event_filters() -> impl Filter<Extract = (EventFilterOptions,), Erro
     if params.from_era() > params.to_era() {
       return Err(warp::reject::custom(InvalidParam::new("from_era cannot be greater than to_era", 
       ErrorCode::InvalidApy)));
+    }
+    Ok(params)
+  })
+}
+
+fn validate_ref_key_options() -> impl Filter<Extract = (RefKeyOptions,), Error = Rejection> + Copy {
+  warp::filters::body::json().and_then(|params: RefKeyOptions| async move {
+    if params.ref_key.is_empty() {
+      return Err(warp::reject::custom(InvalidParam::new("ref_key cannot be empty", 
+      ErrorCode::EmptyRefKey)));
     }
     Ok(params)
   })
@@ -340,6 +354,25 @@ fn with_string(
   warp::any().map(move || s.clone())
 }
 
+async fn gen_ref_key(
+  db: Database,
+  stash: &str
+) -> Result<warp::reply::Json, Infallible> {
+  match db.get_validator_ref_key(&stash).await {
+    Ok(ref_key) => {
+      Ok(warp::reply::json(&json!({
+        "refKey": ref_key
+      })))
+    },
+    Err(_) => {
+      let ref_key = referer::gen_ref_key(&stash);
+      Ok(warp::reply::json(&json!({
+        "refKey": ref_key
+      })))
+    },
+  }
+}
+
 async fn get_validator_data_from_db(
     db: Database,
     cache: Cache,
@@ -496,6 +529,25 @@ fn get_events(
   })
 }
 
+fn get_ref_key(
+  chain: &'static str,
+  db: Database,
+  user_db: Database
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+  warp::path("api")
+  .and(warp::path("v1"))
+  .and(warp::path("refKey"))
+  .and(with_db(db))
+  .and(with_db(user_db))
+  .and(warp::path("stash"))
+  .and(warp::path::param())
+  .and(warp::path(chain))
+  .and(warp::path::end())
+  .and_then(move |db: Database, user_db: Database, stash: String| async move {
+    gen_ref_key(user_db, &stash).await
+  })
+}
+
 fn json_body<T: DeserializeOwned + Send>() -> impl Filter<Extract = (T,), Error = warp::Rejection> + Clone {
   // When accepting a body, we want a JSON body
   // (and to reject huge payloads)...
@@ -514,7 +566,7 @@ fn post_nominated_records(
   .and(warp::path::end())
   .and(json_body::<NominationOptions>())
   .and(warp::post())
-  .and_then(move |db: Database, options: NominationOptions| async move { 
+  .and_then(move |db: Database, options: NominationOptions| async move {
     let result = db.insert_nomination_action(chain.to_string(), options).await;
     if result.is_ok() {
       let tag = result.unwrap();
@@ -586,6 +638,94 @@ fn post_subscribe_newsletter(
   })
 }
 
+fn verify_ref_key(
+  chain: &'static str,
+  db: Database,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+  warp::path("api")
+  .and(warp::path("v1"))
+  .and(warp::path("refKey"))
+  .and(with_db(db))
+  .and(warp::path("stash"))
+  .and(warp::path::param())
+  .and(warp::path(chain))
+  .and(warp::path("verify"))
+  .and(warp::path::end())
+  .and(validate_ref_key_options())
+  .and_then(move |db: Database, stash: String, options: RefKeyOptions| async move {
+    let buf = Path::new(Config::current().signature_verifier.as_str()).join("src").join("index.js").to_path_buf();
+    let path  = buf.to_str().unwrap();
+    let cmd = Command::new("node")
+    .args([path, "--msg", &options.ref_key,
+      "--signature", &options.encoded.unwrap(), "--address", &stash])
+    .output()
+    .expect("failed to execute process");
+    let output = String::from_utf8(cmd.stdout);
+    info!("{:?}", output);
+    match output {
+        Ok(output) => {
+          if output.contains("true") {
+            let ref_key_options = referer::decrypt_ref_key(&options.ref_key);
+            match ref_key_options {
+                Ok(ref_key_options) => {
+                  db.insert_validator_ref_key(ref_key_options).await;
+                  Ok(warp::reply::with_status(
+                    "true",
+                    StatusCode::OK,
+                  ))
+                },
+                Err(_) => {
+                  Err(warp::reject::custom(
+                    OperationFailed::new("", ErrorCode::OperationFailed)
+                  ))
+                },
+            }
+          } else {
+            Ok(warp::reply::with_status(
+              "false",
+              StatusCode::OK,
+            ))
+          }
+        },
+        Err(err) => {
+          error!("{}", err);
+          Err(warp::reject::custom(
+            OperationFailed::new(&err.to_string(), ErrorCode::OperationFailed)
+          ))
+        },
+    }
+    
+  })
+}
+
+fn decode_ref_key(
+  chain: &'static str,
+  db: Database,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+  warp::path("api")
+  .and(warp::path("v1"))
+  .and(warp::path("refKey"))
+  .and(with_db(db))
+  .and(warp::path("decode"))
+  .and(warp::path::end())
+  .and(validate_ref_key_options())
+  .and_then(move |db: Database, options: RefKeyOptions| async move {
+    match db.decode_validator_ref_key(&options.ref_key).await {
+        Ok(c) => {
+          Ok(warp::reply::with_status(
+            c.stash,
+            StatusCode::OK,
+          ))
+        },
+        Err(err) => {
+          Err(warp::reject::custom(
+            OperationFailed::new(&err.to_string(), ErrorCode::OperationFailed)
+          ))
+        },
+    }
+  })
+}
+
 pub fn get_routes(
     chain: &'static str,
     db: Database,
@@ -610,8 +750,12 @@ pub fn get_routes(
 pub fn post_routes(
   chain: &'static str,
   db: Database,
+  chain_db: Database,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
   post_nominated_records(chain, db.clone())
   .or(post_subscribe_newsletter(db.clone()))
-  .or(post_nominated_result(chain, db))
+  .or(post_nominated_result(chain, db.clone()))
+  .or(verify_ref_key(chain, db.clone()))
+  .or(get_ref_key(chain, chain_db, db.clone()))
+  .or(decode_ref_key(chain, db))
 }
