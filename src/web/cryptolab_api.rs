@@ -7,7 +7,7 @@ use serde_json::json;
 use validator::Validate;
 use crate::staking_rewards_collector::StakingRewardsCollector;
 use crate::staking_rewards_collector::{StakingRewardsAddress, StakingRewardsReport};
-use crate::types::{NewsletterSubscriberOptions, NominationOptions, NominationResultOptions, OverSubscribeEventOutput, RefKeyOptions, StakingEvents, ValidatorNominationInfo};
+use crate::types::{NewsletterSubscriberOptions, NominationOptions, NominationResultOptions, OverSubscribeEventOutput, RefKeyOptions, StakingEvents, UserEventMappingOptions, ValidatorNominationInfo};
 use crate::web::Invalid;
 
 // use super::super::cache;
@@ -459,19 +459,21 @@ fn get_nominated_validators(
 fn get_events(
   chain: &'static str,
   db: Database,
+  user_db: Database,
   cache: Cache,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
   warp::path("api")
   .and(warp::path("v1"))
   .and(warp::path("events"))
   .and(with_db(db))
+  .and(with_db(user_db))
   .and(with_cache(cache))
   .and(warp::path("stash"))
   .and(warp::path::param())
   .and(warp::path(chain))
   .and(warp::path::end())
   .and(validate_event_filters())
-  .and_then(move |mut db: Database, cache: Cache, stash: String, filters: EventFilterOptions| async move {
+  .and_then(move |mut db: Database, mut user_db: Database, cache: Cache, stash: String, filters: EventFilterOptions| async move {
       let result = db.get_nominator_info(&stash).await;
       match result {
           Ok(nominator) => {
@@ -487,39 +489,60 @@ fn get_events(
               if filters.from_era() > 0 {
                 from_era = filters.from_era();
               }
-              let commission = db
-              .get_is_commission_changed(&nominator.targets, from_era, to_era)
-              .await;
-              let slash = db
-              .get_multiple_validators_slashes(&nominator.targets, from_era, to_era)
-              .await;
-              let inactive = db.get_all_validators_inactive(&stash, from_era, to_era).await;
-              let stale_payouts =
-                db.get_nominated_validators_stale_payout_events(&nominator.targets, from_era, to_era).await;
-              let payouts = db.get_nominated_validators_payout_events(nominator.account_id, from_era, to_era).await;
-              let kicks = db.get_kick_events(&stash, &from_era, &to_era).await;
-              let chills = db.get_chill_events(&nominator.targets, &from_era, &to_era).await;
-              let oversubscribes = db.get_oversubscribe_events(&stash, &from_era, &to_era).await.unwrap_or_default();
-              let mut o = Vec::<OverSubscribeEventOutput>::new();
-              for ele in oversubscribes {
-                  o.push(OverSubscribeEventOutput {
-                    era: ele.era,
-                    address: ele.address,
-                    nominator: stash.clone(),
-                    amount: ele.nominators.iter().find(|&x| x.who == stash.clone()).unwrap().value.clone()
-                  });
+              match user_db.get_nomination_records(&stash).await {
+                  Ok(c) => {
+                    let options = UserEventMappingOptions {
+                      stash,
+                      from_era,
+                      to_era,
+                      event_types: vec![0, 1, 2, 3, 4, 5, 6],
+                    };
+                    let events = db.get_user_events_by_mapping(options).await;
+                    match events {
+                        Ok(events) => {
+                          Ok(warp::reply::json(&events))
+                        },
+                        Err(_) => {
+                          Err(warp::reject::not_found())
+                        },
+                    }
+                  },
+                  Err(_) => {
+                    let commission = db
+                    .get_is_commission_changed(&nominator.targets, from_era, to_era)
+                    .await;
+                    let slash = db
+                    .get_multiple_validators_slashes(&nominator.targets, from_era, to_era)
+                    .await;
+                    let inactive = db.get_all_validators_inactive(&stash, from_era, to_era).await;
+                    let stale_payouts =
+                      db.get_nominated_validators_stale_payout_events(&nominator.targets, from_era, to_era).await;
+                    let payouts = db.get_nominated_validators_payout_events(nominator.account_id, from_era, to_era).await;
+                    let kicks = db.get_kick_events(&stash, &from_era, &to_era).await;
+                    let chills = db.get_chill_events(&nominator.targets, &from_era, &to_era).await;
+                    let oversubscribes = db.get_oversubscribe_events(&stash, &from_era, &to_era).await.unwrap_or_default();
+                    let mut o = Vec::<OverSubscribeEventOutput>::new();
+                    for ele in oversubscribes {
+                        o.push(OverSubscribeEventOutput {
+                          era: ele.era,
+                          address: ele.address,
+                          nominator: stash.clone(),
+                          amount: ele.nominators.iter().find(|&x| x.who == stash.clone()).unwrap().value.clone()
+                        });
+                    }
+                    let events = StakingEvents {
+                      commissions: commission.unwrap_or_default(),
+                      slashes: slash.unwrap_or_default(),
+                      inactive: inactive.unwrap_or_default(),
+                      stale_payouts: stale_payouts.unwrap_or_default(),
+                      payouts: payouts.unwrap_or_default(),
+                      kicks: kicks.unwrap_or_default(),
+                      chills: chills.unwrap_or_default(),
+                      over_subscribes: o,
+                    };
+                    Ok(warp::reply::json(&events))
+                  }
               }
-              let events = StakingEvents {
-                commissions: commission.unwrap_or_default(),
-                slashes: slash.unwrap_or_default(),
-                inactive: inactive.unwrap_or_default(),
-                stale_payouts: stale_payouts.unwrap_or_default(),
-                payouts: payouts.unwrap_or_default(),
-                kicks: kicks.unwrap_or_default(),
-                chills: chills.unwrap_or_default(),
-                over_subscribes: o,
-              };
-              Ok(warp::reply::json(&events))
           }
           Err(_) => {
               error!("{}", "failed to get nominated list from the cache");
@@ -729,6 +752,7 @@ fn decode_ref_key(
 pub fn get_routes(
     chain: &'static str,
     db: Database,
+    user_db: Database,
     cache: Cache,
     src_path: String
 ) -> impl Filter<Extract = (impl Reply,), Error = warp::Rejection> + Clone {
@@ -744,7 +768,7 @@ pub fn get_routes(
     .or(get_stash_rewards_collector_json(src_path))
     .or(get_validator_unclaimed_eras(chain, db.clone()))
     .or(get_validator_slashes(chain, db.clone())))
-    .or(get_events(chain, db, cache))
+    .or(get_events(chain, db, user_db, cache))
 }
 
 pub fn post_routes(
