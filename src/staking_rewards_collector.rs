@@ -83,6 +83,7 @@ pub struct StakingRewardsAddress {
   pub name: String,
   pub address: String,
   pub start_balance: f64,
+  pub network: String,
 }
 
 pub struct StakingRewardsReport {
@@ -117,11 +118,13 @@ impl StakingRewardsAddress {
   pub fn new(
     name: String,
     address: String,
-    start_balance: f64) -> Self {
+    start_balance: f64,
+    network: String) -> Self {
       StakingRewardsAddress {
         name,
         address,
         start_balance,
+        network
       }
   }
 }
@@ -313,11 +316,13 @@ fn validate_src_params(start: &str, end: &str) -> Option<Result<StakingRewardsCo
 
 #[test]
 fn test_call_exe_good() {
-  let src = StakingRewardsCollector::new("2020-01-01".to_string(), "2021-06-28".to_string(), "USD".to_string(), true, vec![
+  let src = StakingRewardsCollector::new("2020-01-01".to_string(), "2021-06-28".to_string(), "USD".to_string(), 
+true, vec![
     StakingRewardsAddress {
       name: "".to_string(),
       address: "15Uv8ppUZVb8dM2uDf8rLnNPo4QdK9mHrJSUn6fqAhAtDZKu".to_string(),
       start_balance: -0.1,
+      network: "Polkadot".to_string(),
     }
   ]);
   crate::config::Config::init();
@@ -327,11 +332,13 @@ fn test_call_exe_good() {
 
 #[test]
 fn test_call_exe_incorrect_address() {
-  let src = StakingRewardsCollector::new("2020-01-01".to_string(), "2021-06-28".to_string(), "USD".to_string(), true, vec![
+  let src = StakingRewardsCollector::new("2020-01-01".to_string(), "2021-06-28".to_string(), "USD".to_string(),
+  true, vec![
     StakingRewardsAddress {
       name: "".to_string(),
       address: "15Uv8ppUZVb8dMdK9mHrJSUn6fqAhAtDZKu".to_string(),
       start_balance: 0.1,
+      network: "Polkadot".to_string(),
     }
   ]);
   crate::config::Config::init();
@@ -346,11 +353,13 @@ fn test_call_exe_incorrect_address() {
 
 #[test]
 fn test_call_exe_no_rewards_found() {
-  let src = StakingRewardsCollector::new("2020-01-01".to_string(), "2020-01-02".to_string(), "USD".to_string(), true, vec![
+  let src = StakingRewardsCollector::new("2020-01-01".to_string(), "2020-01-02".to_string(), "USD".to_string(),
+   true, vec![
     StakingRewardsAddress {
       name: "".to_string(),
       address: "15Uv8ppUZVb8dM2uDf8rLnNPo4QdK9mHrJSUn6fqAhAtDZKu".to_string(),
       start_balance: 0.1,
+      network: "Polkadot".to_string(),
     }
   ]);
   crate::config::Config::init();
@@ -367,11 +376,12 @@ fn test_call_exe_no_rewards_found() {
 fn test_call_exe_future_date() {
   let end_date = chrono::NaiveDateTime::from_timestamp(chrono::offset::Utc::now().timestamp() + 86400, 0);
   let src = StakingRewardsCollector::new("2020-01-01".to_string(), end_date.format("%Y-%m-%d").to_string(),
-   "USD".to_string(), true, vec![
+   "USD".to_string(), true,  vec![
     StakingRewardsAddress {
       name: "".to_string(),
       address: "15Uv8ppUZVb8dM2uDf8rLnNPo4QdK9mHrJSUn6fqAhAtDZKu".to_string(),
       start_balance: 0.1,
+      network: "Polkadot".to_string(),
     }
   ]);
 
@@ -392,6 +402,7 @@ fn test_call_exe_stale_date() {
       name: "".to_string(),
       address: "15Uv8ppUZVb8dM2uDf8rLnNPo4QdK9mHrJSUn6fqAhAtDZKu".to_string(),
       start_balance: 0.1,
+      network: "Polkadot".to_string(),
     }
   ]);
 
@@ -412,6 +423,7 @@ fn test_call_exe_end_date_earlier_than_start() {
       name: "".to_string(),
       address: "15Uv8ppUZVb8dM2uDf8rLnNPo4QdK9mHrJSUn6fqAhAtDZKu".to_string(),
       start_balance: 0.1,
+      network: "Polkadot".to_string(),
     }
   ]);
 
@@ -431,6 +443,7 @@ fn test_incorrect_date_format() {
       name: "".to_string(),
       address: "15Uv8ppUZVb8dM2uDf8rLnNPo4QdK9mHrJSUn6fqAhAtDZKu".to_string(),
       start_balance: 0.1,
+      network: "Polkadot".to_string(),
     }
   ]);
   assert_eq!(
@@ -450,6 +463,7 @@ fn test_unsupported_currency() {
       name: "".to_string(),
       address: "15Uv8ppUZVb8dM2uDf8rLnNPo4QdK9mHrJSUn6fqAhAtDZKu".to_string(),
       start_balance: 0.1,
+      network: "Polkadot".to_string(),
     }
   ]);
   crate::config::Config::init();

@@ -205,7 +205,7 @@ fn get_stash_rewards_collector(src_path: String) -> impl Filter<Extract = impl w
             let currency = "USD".to_string();
             let src = StakingRewardsCollector::new(p.start.unwrap_or(start), p.end.unwrap_or(end),
             p.currency.unwrap_or(currency), p.price_data.unwrap_or(true),
-            vec![StakingRewardsAddress::new("".to_string(), stash.clone(), p.start_balance.unwrap_or(0.0))]);
+            vec![StakingRewardsAddress::new("".to_string(), stash.clone(), p.start_balance.unwrap_or(0.0), "Kusama".to_string())]);
             match src {
                 Ok(src) => {
                     let result = src.call_exe(src_path.to_string());
