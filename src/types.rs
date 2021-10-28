@@ -521,6 +521,13 @@ pub struct UserEventMappingOptions {
 pub struct NominationResultOptions {
     pub tag: String,
     pub extrinsic_hash: String,
+    pub ref_key: Option<String>
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NominationResultParams {
+    pub ref_key: Option<String>
 } 
 
 #[derive(Deserialize, Validate, Debug)]

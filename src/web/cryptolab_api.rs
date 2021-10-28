@@ -7,7 +7,7 @@ use serde_json::json;
 use validator::Validate;
 use crate::staking_rewards_collector::StakingRewardsCollector;
 use crate::staking_rewards_collector::{StakingRewardsAddress, StakingRewardsReport};
-use crate::types::{NewsletterSubscriberOptions, NominationOptions, NominationResultOptions, OverSubscribeEventOutput, RefKeyOptions, StakingEvents, UserEventMappingOptions, ValidatorNominationInfo};
+use crate::types::{NewsletterSubscriberOptions, NominationOptions, NominationResultOptions, NominationResultParams, OverSubscribeEventOutput, RefKeyOptions, StakingEvents, UserEventMappingOptions, ValidatorNominationInfo};
 use crate::web::Invalid;
 
 // use super::super::cache;
@@ -617,8 +617,10 @@ fn post_nominated_result(
   .and(warp::path(chain))
   .and(warp::path::end())
   .and(json_body::<NominationResultOptions>())
+  .and(warp::query::<NominationResultParams>())
   .and(warp::post())
-  .and_then(move |db: Database, options: NominationResultOptions| async move { 
+  .and_then(move |db: Database, mut options: NominationResultOptions, params: NominationResultParams| async move { 
+    options.ref_key = params.ref_key;
     let result = db.insert_nomination_result(options).await;
     if result.is_ok() {
       Ok(warp::reply::with_status(
