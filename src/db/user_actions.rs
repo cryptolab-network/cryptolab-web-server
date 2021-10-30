@@ -124,6 +124,7 @@ impl Database {
       for ele in array6 {
         array_over_subsribes.push(ele.mapping);
       }
+      // payouts
       let mut cursor = db
         .collection::<Document>("stashInfo")
         .find(doc! {"_id": {"$in": &array_payouts}}, None)
@@ -131,8 +132,74 @@ impl Database {
         .unwrap();
       while let Some(result) = cursor.next().await {
         let doc = result.unwrap();
-        let payout = bson::from_bson(Bson::Document(doc)).unwrap();
-        payouts.push(payout);
+        let ev = bson::from_bson(Bson::Document(doc)).unwrap();
+        payouts.push(ev);
+      }
+      // commissions
+      let mut cursor = db
+        .collection::<Document>("commission")
+        .find(doc! {"_id": {"$in": &array_commission_changes}}, None)
+        .await
+        .unwrap();
+      while let Some(result) = cursor.next().await {
+        let doc = result.unwrap();
+        let ev = bson::from_bson(Bson::Document(doc)).unwrap();
+        commissions.push(ev);
+      }
+      // kicks
+      let mut cursor = db
+        .collection::<Document>("kickEvents")
+        .find(doc! {"_id": {"$in": &array_kicks}}, None)
+        .await
+        .unwrap();
+      while let Some(result) = cursor.next().await {
+        let doc = result.unwrap();
+        let ev = bson::from_bson(Bson::Document(doc)).unwrap();
+        kicks.push(ev);
+      }
+      // chills
+      let mut cursor = db
+        .collection::<Document>("chillEvents")
+        .find(doc! {"_id": {"$in": &array_chills}}, None)
+        .await
+        .unwrap();
+      while let Some(result) = cursor.next().await {
+        let doc = result.unwrap();
+        let ev = bson::from_bson(Bson::Document(doc)).unwrap();
+        chills.push(ev);
+      }
+      // inactives
+      let mut cursor = db
+        .collection::<Document>("inactiveEvents")
+        .find(doc! {"_id": {"$in": &array_inactives}}, None)
+        .await
+        .unwrap();
+      while let Some(result) = cursor.next().await {
+        let doc = result.unwrap();
+        let ev = bson::from_bson(Bson::Document(doc)).unwrap();
+        inactive.push(ev);
+      }
+      // stale_payouts
+      let mut cursor = db
+        .collection::<Document>("stalePayouts")
+        .find(doc! {"_id": {"$in": &array_stale_payouts}}, None)
+        .await
+        .unwrap();
+      while let Some(result) = cursor.next().await {
+        let doc = result.unwrap();
+        let ev = bson::from_bson(Bson::Document(doc)).unwrap();
+        stale_payouts.push(ev);
+      }
+      // over_subsribes
+      let mut cursor = db
+        .collection::<Document>("overSubscribeEvents")
+        .find(doc! {"_id": {"$in": &array_over_subsribes}}, None)
+        .await
+        .unwrap();
+      while let Some(result) = cursor.next().await {
+        let doc = result.unwrap();
+        let ev = bson::from_bson(Bson::Document(doc)).unwrap();
+        over_subscribes.push(ev);
       }
       Ok(StakingEvents {
         commissions,
