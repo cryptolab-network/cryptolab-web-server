@@ -383,6 +383,18 @@ pub struct ValidatorSlashNominator {
     value: u128,
 }
 
+
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct UserEventMapping {
+  pub address: String,
+  #[serde(rename="type")]
+  pub event_type: u32,
+  pub era: u32,
+  pub mapping: mongodb::bson::oid::ObjectId
+}
+
+
 // fn from_str<'de, T, D>(deserializer: D) -> Result<T, D::Error>
 //     where T: FromStr,
 //           T::Err: Display,
@@ -497,9 +509,25 @@ pub struct NominationOptions {
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct UserEventMappingOptions {
+    pub stash: String,
+    pub from_era: u32,
+    pub to_era: u32,
+    pub event_types: Vec<u32>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NominationResultOptions {
     pub tag: String,
     pub extrinsic_hash: String,
+    pub ref_key: Option<String>
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NominationResultParams {
+    pub ref_key: Option<String>
 } 
 
 #[derive(Deserialize, Validate, Debug)]

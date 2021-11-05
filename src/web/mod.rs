@@ -60,11 +60,11 @@ impl WebServer {
     fn initialize_routes(
         &self,
     ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-        cryptolab_api::get_routes("KSM", self.kusama_db.clone(), self.cache.clone(),
+        cryptolab_api::get_routes("KSM", self.kusama_db.clone(), self.users_db.clone(), self.cache.clone(),
         Config::current().staking_rewards_collector_dir.to_string())
-        .or(cryptolab_api::get_routes("DOT", self.polkadot_db.clone(), self.cache.clone(),
+        .or(cryptolab_api::get_routes("DOT", self.polkadot_db.clone(), self.users_db.clone(),self.cache.clone(),
         Config::current().staking_rewards_collector_dir.to_string()))
-        .or(cryptolab_api::get_routes("WND", self.westend_db.clone().unwrap(), self.cache.clone(),
+        .or(cryptolab_api::get_routes("WND", self.westend_db.clone().unwrap(), self.users_db.clone(), self.cache.clone(),
         Config::current().staking_rewards_collector_dir.to_string()))
         .or(cryptolab_api::post_routes("KSM", self.users_db.clone(), self.kusama_db.clone()))
         .or(cryptolab_api::post_routes("DOT", self.users_db.clone(), self.polkadot_db.clone()))

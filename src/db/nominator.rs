@@ -1,7 +1,7 @@
 use futures::StreamExt;
 use mongodb::bson::{self, Document, doc};
 
-use crate::types::NominatorNomination;
+use crate::{db::params::Inactive, types::NominatorNomination};
 
 use super::{Database, DatabaseError};
 
@@ -27,6 +27,7 @@ impl Database {
             },
             
         };
+        let mut eras = Vec::<u32>::new();
         let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
         if let Ok(client) = client {
             let db = client.database(&self.db_name);
@@ -35,13 +36,12 @@ impl Database {
                     .aggregate(vec![match_command], None)
                     .await
                     .unwrap();
-                if let Some(result) = cursor.next().await {
+                while let Some(result) = cursor.next().await {
                     let doc = result.unwrap();
-                    let n = bson::from_document(doc).unwrap();
-                    Ok(n)
-                } else {
-                    Err(DatabaseError::GetFailed)
+                    let n: Inactive = bson::from_document(doc).unwrap();
+                    eras.push(n.era);
                 }
+                Ok(eras)
         } else {
             Err(DatabaseError::Disconnected)
         }

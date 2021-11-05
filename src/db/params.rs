@@ -30,3 +30,9 @@ pub struct DbRefKeyOptions {
     pub timestamp: u32,
     pub rand: String,
 }
+
+#[derive(Deserialize, Debug)]
+pub struct Inactive {
+    pub address: String,
+    pub era: u32,
+}
