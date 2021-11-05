@@ -4,7 +4,7 @@ use serde::{Deserialize};
 use mongodb::bson::{self, Bson, Document, doc};
 use rand::{Rng, thread_rng};
 
-use crate::{referer, types::{CBStashEraReward,ValidatorStalePayoutEvent, ChillEvent, KickEvent, NewsletterSubscriberOptions, NominationOptions, NominationResultOptions, OverSubscribeEventOutput, StakingEvents, UserEventMapping, UserEventMappingOptions, ValidatorCommission, ValidatorSlash}};
+use crate::{db::params::Inactive, referer, types::{CBStashEraReward,ValidatorStalePayoutEvent, ChillEvent, KickEvent, NewsletterSubscriberOptions, NominationOptions, NominationResultOptions, OverSubscribeEventOutput, StakingEvents, UserEventMapping, UserEventMappingOptions, ValidatorCommission, ValidatorSlash}};
 
 use super::{Database, DatabaseError, params::DbRefKeyOptions};
 
@@ -176,8 +176,8 @@ impl Database {
         .unwrap();
       while let Some(result) = cursor.next().await {
         let doc = result.unwrap();
-        let ev = bson::from_bson(Bson::Document(doc)).unwrap();
-        inactive.push(ev);
+        let ev: Inactive = bson::from_bson(Bson::Document(doc)).unwrap();
+        inactive.push(ev.era);
       }
       // stale_payouts
       let mut cursor = db
