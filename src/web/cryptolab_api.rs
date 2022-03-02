@@ -102,7 +102,9 @@ fn get_all_validators(chain: &'static str, db: Database, cache: Cache) -> impl F
         if era == 0 {
           era = db.get_chain_info().await.unwrap().active_era;
         }
+        debug!("api called: get all validators");
         let validators = get_validator_data_from_db(db, cache, chain.to_string(), era, p).await;
+        debug!("api called: get all validators ends");
         validators
     })
 }
@@ -452,8 +454,8 @@ fn get_nominated_validators(
                   Err(_) => Err(warp::reject::not_found()),
               }
           }
-          Err(_) => {
-              error!("{}", "failed to get nominated list from the cache");
+          Err(e) => {
+              error!("failed to get nominated list from the cache {}", e);
               Err(warp::reject::not_found())
           }
       }

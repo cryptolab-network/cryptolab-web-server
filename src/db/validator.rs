@@ -1,4 +1,5 @@
 use futures::StreamExt;
+use log::debug;
 use mongodb::bson::{self, Bson, Document, doc, bson};
 
 use crate::types::{self, CBStashEraReward, ChillEvent, KickEvent, OverSubscribeEvent, ValidatorCommission, ValidatorNominationInfo, ValidatorSlash, ValidatorStalePayoutEvent};
@@ -692,12 +693,14 @@ impl Database {
   ) -> Result<Vec<ValidatorNominationInfo>, DatabaseError> {
     let client = self.client.as_ref().ok_or(DatabaseError::Mongo);
     if let Ok(client) = client {
+        debug!("get validator info from DB");
         let db = client.database(&self.db_name);
               let mut cursor = db
                   .collection::<Document>("nomination")
                   .aggregate(pipeline, None)
                   .await
                   .unwrap();
+              debug!("get validator info from DB ends");
               while let Some(result) = cursor.next().await {
                   let doc = result.unwrap();
                   let _data = &doc.get_array("data").unwrap()[0];
